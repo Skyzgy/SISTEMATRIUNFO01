@@ -5,13 +5,15 @@
   <meta name="viewport" content="width=device-width,initial-scale=1"/>
   <title>Triunfo • Acesso</title>
 
-  <!-- ✅ Conexão com Supabase (corrigido) -->
-  <!-- Este arquivo deve criar window.supabase -->
-  <script src="js/supabaseClient.js"></script>
+  <!-- Lib do Supabase (UMD) -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+  <!-- Seu inicializador do cliente (cria window.supabase = client) -->
+  <script src="/js/supabaseClient.js"></script>
 
   <style>
     :root{
       color-scheme: light dark;
+      /* ===== Paleta Triunfo ===== */
       --brand:#E61414; --brand-700:#c51212; --brand-500:#ff4343;
       --bg-0:#0a0c11; --bg-1:#0f1116;
       --card:#0f1524; --stroke:#1b2436;
@@ -23,6 +25,7 @@
 
     html, body { height:100% }
 
+    /* ===== Fundo com logo ===== */
     body{
       margin:0;
       font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
@@ -32,8 +35,7 @@
         radial-gradient(48% 32% at 18% 8%, rgba(230,20,20,.22) 0%, rgba(230,20,20,0) 60%),
         radial-gradient(42% 34% at 82% -4%, rgba(255,255,255,.06) 0%, rgba(255,255,255,0) 60%),
         linear-gradient(180deg, var(--bg-0) 0%, var(--bg-1) 70%);
-      background-position:
-        center center, 18% 8%, 82% -4%, center;
+      background-position: center center, 18% 8%, 82% -4%, center;
       background-repeat: no-repeat, no-repeat, no-repeat, no-repeat;
       background-size: cover, auto, auto, auto;
       background-attachment: fixed, fixed, fixed, fixed;
@@ -77,16 +79,12 @@
       gap:16px; padding:26px 28px;
       background: rgba(255,255,255,.02);
       border-bottom:1px solid rgba(27,36,54,.5);
-      /* ✅ garante o header acima de qualquer conteúdo interno */
       position: relative; z-index: 2;
     }
 
     .brand{ display:flex; align-items:center; gap:16px; }
-    .brand img{ display:none; }
-
     .title{ display:flex; gap:4px; flex-direction:column; }
     .title h1{ margin:0; font-size:22px; letter-spacing:.3px }
-    .title small{ display:none; }
 
     .switch{
       font-size:15px; color:var(--muted);
@@ -102,8 +100,8 @@
       border:1px solid transparent;
       text-decoration: underline;
       text-shadow: 0 1px 2px rgba(0,0,0,.4);
-      cursor: pointer;                 /* ✅ garante ponteiro de clique */
-      pointer-events: auto;            /* ✅ garante clique */
+      cursor: pointer;
+      pointer-events: auto;
     }
     .switch .switch-link:hover{
       background: rgba(230,20,20,.12);
@@ -172,7 +170,7 @@
           <div class="title"><h1 id="titulo">Triunfo • Acesso</h1></div>
         </div>
 
-        <!-- ✅ Link de alternância CORRETO -->
+        <!-- Link de alternância CORRETO -->
         <div class="switch">
           <span id="switchText">Já tem conta?</span>
           <a id="toggleLink" class="switch-link" href="#entrar" aria-controls="form-login">Entrar</a>
@@ -227,21 +225,26 @@
     </div>
   </div>
 
+  <!-- Script principal: registra eventos primeiro, Supabase em paralelo -->
   <script type="module">
-    /* ==== Espera o Supabase ficar disponível (resolve ESM e UMD/fallback) ==== */
-    async function waitForSupabase(timeoutMs = 7000) {
-      const start = Date.now();
-      while (!window.supabase) {
-        await new Promise(r => setTimeout(r, 50));
-        if (Date.now() - start > timeoutMs) throw new Error("Timeout esperando Supabase");
-      }
-    }
-    await waitForSupabase();
-
-    // -------- Helpers --------
-    const FAKE_DOMAIN = "drivers.local";
+    // util
     const el = (id) => document.getElementById(id);
 
+    // Flag de disponibilidade do Supabase (fica true quando o client estiver pronto)
+    let supabaseReady = false;
+
+    // Verifica sem travar a UI
+    async function ensureSupabase(timeoutMs = 7000) {
+      const start = Date.now();
+      while (!window.supabase || !window.supabase.auth) {
+        await new Promise(r => setTimeout(r, 50));
+        if (Date.now() - start > timeoutMs) return false;
+      }
+      return true;
+    }
+
+    // Helpers (nome -> e-mail fake controlado)
+    const FAKE_DOMAIN = "drivers.local";
     function slugifyName(name){
       const s = name
         .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
@@ -276,18 +279,16 @@
       });
     }
 
-    // ✅ Alternância via link (id="toggleLink" agora existe)
-    el('toggleLink').addEventListener('click', (e)=>{
+    // ====== 1) EVENTOS DA UI (sempre ativos) ======
+    el('toggleLink')?.addEventListener('click', (e)=>{
       e.preventDefault();
       const toLogin = el('form-cadastro').classList.contains('hidden') === false;
       setView(toLogin ? 'login' : 'cadastro');
     });
 
-    // Voltar do login para o cadastro
-    el('btnVoltarCadastro').addEventListener('click', () => setView('cadastro'));
+    el('btnVoltarCadastro')?.addEventListener('click', () => setView('cadastro'));
 
-    // -------- Cadastro (Nome + Senha >= 6) --------
-    el('form-cadastro').addEventListener('submit', async (e)=>{
+    el('form-cadastro')?.addEventListener('submit', async (e)=>{
       e.preventDefault();
       el('cad-erro').style.display='none';
       el('cad-ok').style.display='none';
@@ -304,6 +305,11 @@
         el('cad-erro').style.display='block'; return;
       }
 
+      if (!supabaseReady || !window.supabase || !window.supabase.auth){
+        el('cad-erro').textContent = 'Serviço de autenticação indisponível. Tente novamente em instantes.';
+        el('cad-erro').style.display='block'; return;
+      }
+
       const btn = el('btnCriar'); btn.disabled = true; btn.textContent = 'Criando…';
 
       let email = nameToEmail(nome);
@@ -312,7 +318,6 @@
       while (!criado && tentativas < 3) {
         const { data, error } = await supabase.auth.signUp({ email, password: senha });
         if (!error) {
-          // ⚠️ Em projetos com verificação de e-mail, data.user pode estar null até confirmar
           const user = data.user;
           if (user) {
             const { error: pErr } = await supabase.from('profiles').insert({
@@ -339,8 +344,7 @@
       btn.disabled = false; btn.textContent = 'Criar conta';
     });
 
-    // -------- Login --------
-    el('form-login').addEventListener('submit', async (e)=>{
+    el('form-login')?.addEventListener('submit', async (e)=>{
       e.preventDefault();
       el('log-erro').style.display='none';
 
@@ -349,6 +353,11 @@
 
       if (!nome || senha.length < 6){
         el('log-erro').textContent = 'Informe um nome e uma senha com pelo menos 6 caracteres.';
+        el('log-erro').style.display='block'; return;
+      }
+
+      if (!supabaseReady || !window.supabase || !window.supabase.auth){
+        el('log-erro').textContent = 'Serviço de autenticação indisponível. Tente novamente em instantes.';
         el('log-erro').style.display='block'; return;
       }
 
@@ -363,12 +372,17 @@
         return;
       }
 
-      // sucesso
       window.location.href = "/";
     });
 
-    // Inicia em Cadastro
+    // View inicial
     setView('cadastro');
+
+    // ====== 2) CHECAGEM DO SUPABASE EM PARALELO ======
+    (async () => {
+      supabaseReady = await ensureSupabase(7000);
+      console.info('Supabase pronto?', supabaseReady);
+    })();
   </script>
 </body>
 </html>
