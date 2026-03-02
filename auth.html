@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1"/>
   <title>Triunfo • Acesso</title>
 
-  <!-- Conexão com Supabase -->
+  <!-- Conexão com Supabase (mantenha seu js/supabaseClient.js como já está) -->
   <script type="module" src="js/supabaseClient.js"></script>
 
   <style>
@@ -21,7 +21,6 @@
       --bg-1: #0f1116;
 
       --card:   #0f1524;
-      --card-2: #0c1423;
       --stroke: #1b2436;
 
       --text:   #eaf0f6;
@@ -29,6 +28,9 @@
 
       --shadow: 0 28px 72px rgba(0,0,0,.55);
       --radius: 18px;
+
+      /* Transparência que queremos IGUAL no card (amarelo) e painel (azul) */
+      --glass-alpha: 0.40;  /* ajuste fino: 0.35 ~ 0.50 */
     }
 
     html, body { height:100% }
@@ -41,9 +43,9 @@
       font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
       color:var(--text);
 
-      /* 1) LOGO  2..4) halos/gradiente */
+      /* 1) LOGO — ocupa a TELA TODA | 2..4) halos/gradiente */
       background-image:
-        url("logo.jpeg"), /* ← ajuste se sua logo estiver em outra pasta (ex.: "img/logo.png") */
+        url("logo.jpeg"),  /* ← troque se sua logo estiver em outro caminho (ex.: "img/logo.png") */
         radial-gradient(48% 32% at 18% 8%, rgba(230,20,20,.22) 0%, rgba(230,20,20,0) 60%),
         radial-gradient(42% 34% at 82% -4%, rgba(255,255,255,.06) 0%, rgba(255,255,255,0) 60%),
         linear-gradient(180deg, var(--bg-0) 0%, var(--bg-1) 70%);
@@ -54,28 +56,28 @@
         center;
       background-repeat: no-repeat, no-repeat, no-repeat, no-repeat;
 
-      /* ⬇️ LOGO ocupando a TELA TODA (preenche; pode cortar bordas para manter proporção) */
+      /* LOGO de fundo em tela cheia (preenche; pode cortar cantos) */
       background-size:
-        cover,   /* troque para "contain" se quiser SEM corte e aceitando “respiro” nas bordas */
+        cover,
         auto,
         auto,
         auto;
 
-      /* Preso ao viewport (parallax suave) */
+      /* Preso ao viewport */
       background-attachment: fixed, fixed, fixed, fixed;
 
       /* Mistura sutil para a logo em fundo escuro */
       background-blend-mode: screen, normal, normal, normal;
     }
 
-    /* Camada sutil para “apagar” um pouco a logo (TRANSPARÊNCIA GLOBAL) */
+    /* Camada sutil para uniformizar e deixar a logo mais discreta */
     body::before{
       content:"";
       position: fixed; inset: 0; pointer-events: none; z-index: 0;
-      background: rgba(10,12,17,.28); /* ↑ AUMENTE (.35/.40) p/ mais transparência, ↓ DIMINUA p/ menos */
+      background: rgba(10,12,17,.28); /* ↑ aumente p/ 0.35 se quiser a logo ainda mais apagada */
     }
 
-    /* ===== Container principal MAIS TRANSPARENTE ===== */
+    /* ===== Container principal ===== */
     .wrap{
       min-height:100svh;
       display:flex; align-items:center; justify-content:center;
@@ -84,11 +86,12 @@
       z-index: 1; /* acima da marca d’água */
     }
 
+    /* ===== Card (área amarela no seu print) — transparência controlada por --glass-alpha ===== */
     .shell{
       width:min(1100px, 100%);
       background:
         linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.03)),
-        rgba(15, 21, 36, 0.50);          /* card ~50% transparente */
+        rgba(15, 21, 36, var(--glass-alpha));
       border:1px solid rgba(27,36,54,.55);
       border-radius: var(--radius);
       box-shadow: 0 22px 60px rgba(0,0,0,.45);
@@ -111,12 +114,10 @@
     }
 
     .brand{ display:flex; align-items:center; gap:16px; }
-    .brand img{
-      width:64px; height:64px;
-      border-radius:14px; object-fit:cover;
-      box-shadow: 0 10px 30px rgba(230,20,20,.25);
-      background:#fff;
-    }
+
+    /* ===== Logo pequena no cabeçalho — REMOVIDA (como você pediu) ===== */
+    .brand img{ display:none; }
+
     .title{ display:flex; gap:4px; flex-direction:column; }
     .title h1{ margin:0; font-size:22px; letter-spacing:.3px }
     .title small{ color:var(--muted) }
@@ -134,17 +135,17 @@
 
     .content{ padding:28px; }
 
-    /* Painel do formulário MAIS TRANSPARENTE */
+    /* ===== Painel do formulário (área azul no seu print) — igual ao card externo ===== */
     .panel{
       background:
         linear-gradient(180deg, rgba(255,255,255,.03), rgba(0,0,0,.02)),
-        rgba(12, 20, 35, 0.45);          /* painel ~45% transparente */
+        rgba(15, 21, 36, var(--glass-alpha));  /* MESMA transparência do card */
       border:1px solid rgba(27,36,54,.50);
       border-radius:16px;
       padding:24px;
       max-width:760px;
       margin-inline:auto;
-      backdrop-filter: blur(4px);        /* efeito vidro leve */
+      backdrop-filter: blur(4px);              /* vidro leve (opcional) */
     }
     .panel h2{ margin:0 0 16px 0; font-size:20px; letter-spacing:.2px }
 
@@ -152,7 +153,7 @@
     input{
       width:100%; padding:14px; border-radius:12px;
       border:1px solid rgba(39,50,74,.85);
-      background: rgba(15,23,41,.65);   /* input translúcido */
+      background: rgba(15,23,41,.65);
       color:var(--text);
       outline:none; transition:.18s;
     }
@@ -182,7 +183,6 @@
 
     @media (max-width: 620px){
       .header{ align-items:flex-start }
-      .brand img{ width:56px; height:56px }
       .title h1{ font-size:19px }
       .panel{ padding:18px }
     }
@@ -193,14 +193,14 @@
     <div class="shell" role="dialog" aria-labelledby="titulo">
       <div class="header">
         <div class="brand">
-          <img src="logo.jpeg" alt="Viação Triunfo">
+          <!-- <img src="logo.jpeg" alt="Viação Triunfo">  ← agora oculto via CSS -->
           <div class="title">
             <h1 id="titulo">Triunfo • Acesso</h1>
             <small>Nome + Senha (sem e‑mail)</small>
           </div>
         </div>
 
-        <!-- Link para alternar -->
+        <!-- Link para alternar Cadastro ↔ Entrar -->
         <div class="switch">
           <span id="switchText">Já tem conta?</span>
           <a href="#entrar" id="toggleLink" aria-controls="form-login">Entrar</a>
