@@ -3,133 +3,228 @@
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1"/>
-  <title>Entrar - Sistema Triunfo</title>
+  <title>Triunfo • Acesso</title>
 
-  <!-- Conexão com Supabase (caminho relativo + type=module) -->
+  <!-- Conexão com o Supabase (caminho relativo + module) -->
   <script type="module" src="js/supabaseClient.js"></script>
 
   <style>
-    :root {
+    :root{
       color-scheme: light dark;
-      /* Paleta Triunfo (ajuste como preferir) */
-      --bg: #0f1115;
-      --card: #141821;
-      --muted: #95a3b3;
-      --text: #e8edf2;
+      /* Paleta Triunfo */
+      --bg-0: #0b0d12;
+      --bg-1: #0f1115;
+      --card: #121722;
+      --card-2: #0f1420;
+      --stroke: #1c2333;
+      --muted: #9fb0c6;
+      --text: #eaf0f6;
       --primary: #E61414;   /* vermelho Triunfo */
-      --primary-700: #c51212;
-      --accent: #0bb36b;    /* verde sucesso */
+      --primary-700:#c51212;
+      --ok: #0bb36b;        /* verde ação positiva */
+      --ok-700:#089a5b;
+      --shadow: 0 12px 40px rgba(0,0,0,.45);
+      --radius: 14px;
     }
 
-    html, body { height:100%; }
+    html, body {height:100%}
     body{
-      margin:0; font-family:system-ui, Arial, sans-serif; color:var(--text);
-      background: linear-gradient(180deg, #0b0d12 0%, #0f1115 60%, #0f1115 100%);
+      margin:0; font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      color:var(--text);
+      background: radial-gradient(60% 60% at 20% 10%, #11162a 0%, #0b0d12 50%, #0b0d12 100%),
+                  linear-gradient(180deg, var(--bg-0), var(--bg-1));
       display:flex; align-items:center; justify-content:center; padding:24px;
     }
-    .card{
-      width:min(720px, 100%); background:var(--card);
-      border:1px solid #1d2330; border-radius:14px; padding:24px;
-      box-shadow: 0 10px 30px rgba(0,0,0,.35);
+
+    .shell{
+      width:min(880px, 100%);
+      background: linear-gradient(180deg, rgba(255,255,255,.02), rgba(255,255,255,.01)) , var(--card);
+      border:1px solid var(--stroke);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      overflow:hidden;
     }
-    .brand{ display:flex; align-items:center; gap:12px; margin-bottom:12px; }
-    .brand img{ width:40px; height:40px; object-fit:cover; border-radius:6px; }
-    .brand h1{ font-size:22px; margin:0; letter-spacing:.2px; }
-    .subtitle{ color:var(--muted); margin:0 0 18px 0; font-size:14px; }
 
-    .grid{ display:grid; gap:16px; grid-template-columns: 1fr 1fr; }
-    @media (max-width: 720px){ .grid{ grid-template-columns: 1fr; } }
+    .header{
+      display:flex; align-items:center; justify-content:space-between;
+      gap:16px; padding:20px 22px; background:rgba(255,255,255,.02);
+      border-bottom:1px solid var(--stroke);
+    }
+    .brand{display:flex; align-items:center; gap:12px;}
+    .brand img{width:40px; height:40px; border-radius:8px; object-fit:cover}
+    .title{display:flex; flex-direction:column}
+    .title h1{font-size:18px; margin:0; letter-spacing:.2px}
+    .title small{color:var(--muted)}
 
-    .panel{ border:1px solid #222a39; border-radius:12px; padding:16px; background:#111622; }
-    .panel h3{ margin:0 0 10px 0; font-size:16px; }
-    label{ font-size:13px; color:var(--muted); display:block; margin-bottom:6px; }
+    .switch{
+      font-size:14px; color:var(--muted);
+    }
+    .switch a{
+      color:var(--text); text-underline-offset:3px;
+      font-weight:600; cursor:pointer;
+    }
+    .switch a:hover{color:#fff; text-decoration:underline}
+
+    .content{
+      padding:22px;
+      display:grid; grid-template-columns:1fr; gap:18px;
+    }
+
+    .panel{
+      background:var(--card-2);
+      border:1px solid var(--stroke);
+      border-radius:12px;
+      padding:18px;
+    }
+    .panel h2{margin:0 0 10px 0; font-size:16px; letter-spacing:.2px}
+    label{display:block; font-size:13px; color:var(--muted); margin:8px 0 6px}
     input{
-      width:100%; padding:11px 12px; border-radius:8px; border:1px solid #2a3242;
-      background:#0f1420; color:var(--text); outline:none;
+      width:100%; padding:12px 12px; border-radius:10px;
+      border:1px solid #273044; background:#0f1522; color:var(--text);
+      outline:none; transition:.2s;
     }
-    input:focus{ border-color:#39507a; box-shadow: 0 0 0 3px rgba(57,80,122,.25); }
-    .row{ display:grid; gap:8px; margin-bottom:12px; }
-    button{
+    input:focus{border-color:#39507a; box-shadow:0 0 0 3px rgba(57,80,122,.25)}
+    .row{display:grid; gap:10px}
+    .actions{display:flex; gap:10px; align-items:center; margin-top:12px}
+
+    .btn{
       display:inline-flex; align-items:center; justify-content:center; gap:8px;
-      border:0; cursor:pointer; padding:11px 16px; border-radius:8px; font-weight:600;
+      border:0; border-radius:10px; padding:12px 16px; cursor:pointer;
+      font-weight:600;
     }
-    .btn-primary{ background:var(--primary); color:#fff; }
-    .btn-primary:hover{ background:var(--primary-700); }
-    .btn-ok{ background:var(--accent); color:#002413; }
-    .muted{ color:var(--muted); font-size:12px; margin-top:6px; }
-    .divider{ height:1px; background:#202737; margin:16px 0; }
+    .btn-primary{background:var(--primary); color:#fff}
+    .btn-primary:hover{background:var(--primary-700)}
+    .btn-ok{background:var(--ok); color:#001f13}
+    .btn-ok:hover{background:var(--ok-700)}
+    .btn-ghost{background:transparent; color:var(--muted); border:1px solid var(--stroke)}
+    .btn[disabled]{opacity:.55; cursor:not-allowed}
+
+    .hint{color:var(--muted); font-size:12px; margin-top:6px}
+    .error{background:#2a1111; border:1px solid #4d1d1d; color:#ffb3b3; padding:10px 12px; border-radius:10px; margin-top:8px; display:none}
+    .success{background:#0f2a1f; border:1px solid #1f5a46; color:#9ee7c4; padding:10px 12px; border-radius:10px; margin-top:8px; display:none}
+
+    /* Alternância Cadastro/Entrar */
+    .hidden{display:none}
+    @media (max-width: 560px){
+      .header{align-items:flex-start; gap:10px}
+      .title h1{font-size:16px}
+    }
   </style>
 </head>
 <body>
-  <div class="card">
-    <div class="brand">
-      <img src="logo.jpeg" alt="Viação Triunfo">
-      <h1>Triunfo • Login / Cadastro</h1>
-    </div>
-    <p class="subtitle">
-      Cadastro simplificado para motoristas: <b>Nome + Senha</b> (sem e‑mail).
-      Depois você pode promover seu usuário para <b>admin</b> na tabela <code>profiles</code>.
-    </p>
+  <div class="shell" role="dialog" aria-labelledby="titulo">
+    <div class="header">
+      <div class="brand">
+        <img src="logo.jpeg" alt="Viação Triunfo"/>
+        <div class="title">
+          <h1 id="titulo">Triunfo • Acesso</h1>
+          <small>Nome + Senha (sem e‑mail)</small>
+        </div>
+      </div>
 
-    <div class="grid">
-      <!-- CADASTRO -->
-      <form id="signup" class="panel" autocomplete="off">
-        <h3>Cadastro de Motorista</h3>
+      <!-- Link para alternar entre cadastrar e entrar -->
+      <div class="switch">
+        <span id="switchText">Já tem conta?</span>
+        <a id="toggleLink" href="#entrar" aria-controls="form-login" aria-expanded="false">Entrar</a>
+      </div>
+    </div>
+
+    <div class="content">
+      <!-- CADASTRO (padrão visível) -->
+      <form id="form-cadastro" class="panel" autocomplete="off">
+        <h2>Cadastro de Motorista</h2>
         <div class="row">
-          <label for="su_nome">Nome do motorista</label>
+          <label for="su_nome">Nome</label>
           <input id="su_nome" type="text" placeholder="Ex.: João da Silva" required />
         </div>
         <div class="row">
           <label for="su_senha">Senha / PIN (mín. 4)</label>
           <input id="su_senha" type="password" inputmode="numeric" minlength="4" placeholder="Ex.: 4321" required />
         </div>
-        <button class="btn-ok" type="submit">Criar conta (driver)</button>
-        <div class="muted">É gerado um e‑mail técnico (<code>nome@drivers.local</code>) apenas para autenticar.</div>
+        <div class="actions">
+          <button class="btn btn-ok" type="submit" id="btnCriar">Criar conta</button>
+          <div class="hint">Um e‑mail técnico do tipo <code>nome@drivers.local</code> é gerado apenas para autenticação.</div>
+        </div>
+        <div class="error" id="cad-erro"></div>
+        <div class="success" id="cad-ok"></div>
       </form>
 
-      <!-- LOGIN -->
-      <form id="signin" class="panel" autocomplete="off">
-        <h3>Entrar</h3>
+      <!-- LOGIN (inicialmente oculto) -->
+      <form id="form-login" class="panel hidden" autocomplete="off" aria-hidden="true">
+        <h2>Entrar</h2>
         <div class="row">
-          <label for="si_nome">Nome do motorista</label>
-          <input id="si_nome" type="text" placeholder="Ex.: João da Silva" required />
+          <label for="si_nome">Nome</label>
+          <input id="si_nome" type="text" placeholder="Ex.: João da Silva" />
         </div>
         <div class="row">
           <label for="si_senha">Senha / PIN</label>
-          <input id="si_senha" type="password" inputmode="numeric" placeholder="Sua senha" required />
+          <input id="si_senha" type="password" inputmode="numeric" placeholder="Sua senha" />
         </div>
-        <button class="btn-primary" type="submit">Entrar</button>
+        <div class="actions">
+          <button class="btn btn-primary" type="submit" id="btnEntrar">Entrar</button>
+          <button class="btn btn-ghost" type="button" id="btnVoltarCadastro">← Voltar para cadastro</button>
+        </div>
+        <div class="error" id="log-erro"></div>
       </form>
     </div>
-
-    <div class="divider"></div>
-    <p class="muted">Dica: se um nome já existir, o sistema tentará <code>Nome 2</code>, <code>Nome 3</code>…</p>
   </div>
 
   <script type="module">
-    // --- Funções utilitárias ---
+    // --------------- Helpers ----------------
     const FAKE_DOMAIN = "drivers.local";
+    const el = (id) => document.getElementById(id);
     function slugifyName(name){
-      const slug = name
-        .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
-        .trim().toLowerCase().replace(/[^a-z0-9 ]/g, '').replace(/\s+/g, '.');
-      return slug || `motorista.${Math.floor(Math.random()*1e6)}`; // fallback se o nome ficar vazio
+      const s = name.normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+        .trim().toLowerCase().replace(/[^a-z0-9 ]/g,'').replace(/\s+/g,'.');
+      return s || `motorista.${Math.floor(Math.random()*1e6)}`;
     }
-    function nameToEmail(name){ return `${slugifyName(name)}@${FAKE_DOMAIN}`; }
+    const nameToEmail = (name) => `${slugifyName(name)}@${FAKE_DOMAIN}`;
 
-    // Garante que o client do Supabase está disponível
+    function setView(view){ // 'cadastro' | 'login'
+      const isLogin = view === 'login';
+      el('form-cadastro').classList.toggle('hidden', isLogin);
+      el('form-login').classList.toggle('hidden', !isLogin);
+      el('form-login').setAttribute('aria-hidden', (!isLogin).toString());
+      // Ajusta link do topo
+      if (isLogin){
+        el('switchText').textContent = 'Ainda não tem conta?';
+        el('toggleLink').textContent = 'Cadastrar';
+        el('toggleLink').setAttribute('href', '#cadastrar');
+        el('toggleLink').setAttribute('aria-controls','form-cadastro');
+      } else {
+        el('switchText').textContent = 'Já tem conta?';
+        el('toggleLink').textContent = 'Entrar';
+        el('toggleLink').setAttribute('href', '#entrar');
+        el('toggleLink').setAttribute('aria-controls','form-login');
+      }
+    }
+
+    // --------------- Alternância UI ----------------
+    el('toggleLink').addEventListener('click', (e)=>{
+      e.preventDefault();
+      const toLogin = el('form-cadastro').classList.contains('hidden') === false; // se cadastro visível, vai pra login
+      setView(toLogin ? 'login' : 'cadastro');
+    });
+    el('btnVoltarCadastro').addEventListener('click', ()=> setView('cadastro'));
+
+    // --------------- Supabase Client Check ----------------
     if (!window.supabase) {
       alert("Falha ao carregar o Supabase. Verifique js/supabaseClient.js");
       throw new Error("Supabase client ausente");
     }
 
-    // --- CADASTRO (Nome + Senha) ---
-    document.getElementById("signup").addEventListener("submit", async (e) => {
+    // --------------- Cadastro ----------------
+    el('form-cadastro').addEventListener('submit', async (e)=>{
       e.preventDefault();
-      const nome = document.getElementById("su_nome").value.trim();
-      const senha = document.getElementById("su_senha").value;
-      if (nome.length < 2) return alert("Informe um nome válido.");
-      if (senha.length < 4) return alert("Senha/PIN deve ter pelo menos 4 caracteres.");
+      el('cad-erro').style.display='none';
+      el('cad-ok').style.display='none';
+
+      const nome = el('su_nome').value.trim();
+      const senha = el('su_senha').value;
+      if (nome.length < 2) { el('cad-erro').textContent = 'Informe um nome válido.'; el('cad-erro').style.display='block'; return; }
+      if (senha.length < 4){ el('cad-erro').textContent = 'Senha/PIN deve ter pelo menos 4 caracteres.'; el('cad-erro').style.display='block'; return; }
+
+      const btn = el('btnCriar'); btn.disabled = true; btn.textContent = 'Criando...';
 
       let email = nameToEmail(nome);
       let tentativas = 0, criado = false, ultimoErro = null;
@@ -138,37 +233,54 @@
         const { data, error } = await supabase.auth.signUp({ email, password: senha });
         if (!error) {
           const user = data.user;
-          const { error: pErr } = await supabase.from("profiles").insert({
-            user_id: user.id, role: "driver", full_name: nome
+          const { error: pErr } = await supabase.from('profiles').insert({
+            user_id: user.id, role: 'driver', full_name: nome
           });
-          if (pErr) return alert("Erro ao salvar perfil: " + pErr.message);
-          alert("Conta criada! Agora faça login.");
+          if (pErr) { ultimoErro = pErr; break; }
+          el('cad-ok').textContent = 'Conta criada! Agora clique em “Entrar”.';
+          el('cad-ok').style.display='block';
           criado = true;
-        } else if ((error.message || "").toLowerCase().includes("already registered")) {
-          tentativas++;
-          email = nameToEmail(`${nome} ${tentativas+1}`);
+          setView('login');
+        } else if ((error.message||'').toLowerCase().includes('already')) {
+          tentativas++; email = nameToEmail(`${nome} ${tentativas+1}`);
           ultimoErro = error;
         } else {
-          ultimoErro = error;
-          break;
+          ultimoErro = error; break;
         }
       }
-      if (!criado && ultimoErro) alert("Não foi possível criar a conta: " + ultimoErro.message);
+
+      if (!criado && ultimoErro){
+        el('cad-erro').textContent = `Não foi possível criar a conta: ${ultimoErro.message || ultimoErro}`;
+        el('cad-erro').style.display='block';
+      }
+      btn.disabled = false; btn.textContent = 'Criar conta';
     });
 
-    // --- LOGIN (Nome + Senha) ---
-    document.getElementById("signin").addEventListener("submit", async (e) => {
+    // --------------- Login ----------------
+    el('form-login').addEventListener('submit', async (e)=>{
       e.preventDefault();
-      const nome = document.getElementById("si_nome").value.trim();
-      const senha = document.getElementById("si_senha").value;
-      if (!nome || !senha) return alert("Preencha nome e senha.");
+      el('log-erro').style.display='none';
+
+      const nome  = el('si_nome').value.trim();
+      const senha = el('si_senha').value;
+      if (!nome || !senha){ el('log-erro').textContent = 'Preencha nome e senha.'; el('log-erro').style.display='block'; return; }
+
+      const btn = el('btnEntrar'); btn.disabled = true; btn.textContent = 'Entrando...';
 
       const email = nameToEmail(nome);
       const { data, error } = await supabase.auth.signInWithPassword({ email, password: senha });
-      if (error) return alert("Erro no login: " + error.message);
-
+      if (error){
+        el('log-erro').textContent = error.message || 'Erro no login.';
+        el('log-erro').style.display='block';
+        btn.disabled = false; btn.textContent = 'Entrar';
+        return;
+      }
+      // sucesso
       window.location.href = "/";
     });
+
+    // Começa mostrando CADASTRO
+    setView('cadastro');
   </script>
 </body>
 </html>
