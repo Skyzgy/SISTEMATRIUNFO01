@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1"/>
   <title>Triunfo • Acesso</title>
 
-  <!-- Conexão com Supabase (caminho relativo + module) -->
+  <!-- Conexão com Supabase -->
   <script type="module" src="js/supabaseClient.js"></script>
 
   <style>
@@ -16,15 +16,11 @@
       --brand:       #E61414;   /* vermelho principal */
       --brand-700:   #c51212;
       --brand-500:   #ff4343;
-      --brand-soft:  rgba(230,20,20,.12);
-
       --bg-0: #0a0c11;
       --bg-1: #0f1116;
-
       --card:   #0f1524;
       --card-2: #0c1423;
       --stroke: #1b2436;
-
       --text:   #eaf0f6;
       --muted:  #9fb0c6;
 
@@ -33,45 +29,52 @@
     }
 
     html, body { height:100% }
+
+    /* =========================================
+       BACKGROUND com a logo como PRIMEIRA camada
+       ========================================= */
     body{
       margin:0;
       font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
       color:var(--text);
-      /* Fundo base com halos e gradiente */
-      background:
+
+      /* A PRIMEIRA camada é a LOGO (marca d’água) */
+      background-image:
+        url("/logo.jpeg"),                                     /* ← caminho absoluto: raiz do projeto */
         radial-gradient(48% 32% at 18% 8%, rgba(230,20,20,.22) 0%, rgba(230,20,20,0) 60%),
         radial-gradient(42% 34% at 82% -4%, rgba(255,255,255,.06) 0%, rgba(255,255,255,0) 60%),
         linear-gradient(180deg, var(--bg-0) 0%, var(--bg-1) 70%);
+      background-position:
+        center center,
+        18% 8%,
+        82% -4%,
+        center;
+      background-repeat:
+        no-repeat,
+        no-repeat,
+        no-repeat,
+        no-repeat;
+      /* Tamanho da LOGO (ajuste livre): */
+      background-size:
+        clamp(420px, 85vmin, 1200px),   /* logo */
+        auto,
+        auto,
+        auto;
+      /* Mantém a logo “presa” ao viewport */
+      background-attachment:
+        fixed, fixed, fixed, fixed;
+
+      /* Mistura: deixa a logo sutil sobre o fundo escuro */
+      background-blend-mode:
+        screen, normal, normal, normal;   /* ‘screen’ destaca a logo em fundos escuros */
     }
 
-    /* ===== Marca d’água full-screen por baixo de tudo ===== */
-    .bg-watermark{
-      position: fixed;       /* cobre o viewport inteiro */
-      inset: 0;
-      z-index: 0;            /* fica atrás do conteúdo */
-      pointer-events: none;  /* não intercepta cliques */
-      background-image: url('logo.jpeg');  /* ajuste o caminho se o arquivo não estiver na raiz */
-      background-repeat: no-repeat;
-      background-position: center center;
-
-      /* Tamanho da marca d’água: ajuste à vontade */
-      background-size: clamp(420px, 85vmin, 1200px);
-
-      /* Intensidade/estilo */
-      opacity: .08;                          /* 0.04 ~ 0.12 conforme seu gosto */
-      filter: saturate(1.05) contrast(1.05);
-      mix-blend-mode: screen;                /* alternativas: soft-light (mais sutil) ou overlay (mais forte) */
-    }
-
-    /* ===== Container principal maior ===== */
+    /* ===== Container principal ===== */
     .wrap{
-      min-height:100svh;                     /* ocupa a tela toda em mobile também */
+      min-height:100svh;
       display:flex; align-items:center; justify-content:center;
       padding:36px;
-      position: relative;                    /* cria contexto de empilhamento */
-      z-index: 1;                            /* acima da marca d’água */
     }
-
     .shell{
       width:min(1100px, 100%);
       background:
@@ -82,9 +85,9 @@
       box-shadow: var(--shadow);
       overflow:hidden;
       position:relative;
+      z-index: 0; /* conteúdo acima do background do body */
     }
-
-    /* Filete superior Triunfo */
+    /* Filete superior vermelho Triunfo */
     .shell::before{
       content:"";
       position:absolute; left:0; top:0; right:0; height:8px;
@@ -97,13 +100,11 @@
       background: rgba(255,255,255,.02);
       border-bottom:1px solid var(--stroke);
     }
-
     .brand{ display:flex; align-items:center; gap:16px; }
     .brand img{
-      width:64px; height:64px;             /* logo maior */
+      width:64px; height:64px;
       border-radius:14px; object-fit:cover;
       box-shadow: 0 10px 30px rgba(230,20,20,.25);
-      outline: 3px solid var(--brand-soft);
       background:#fff;
     }
     .title{ display:flex; gap:4px; flex-direction:column; }
@@ -117,8 +118,8 @@
       border:1px solid transparent;
     }
     .switch a:hover{
-      background:var(--brand-soft);
-      border-color:rgba(230,20,20,.32);
+      background: rgba(230,20,20,.12);
+      border-color: rgba(230,20,20,.32);
     }
 
     .content{ padding:28px; }
@@ -173,14 +174,11 @@
   </style>
 </head>
 <body>
-  <!-- Marca d’água em toda a tela (por baixo de tudo) -->
-  <div class="bg-watermark" aria-hidden="true"></div>
-
   <div class="wrap">
     <div class="shell" role="dialog" aria-labelledby="titulo">
       <div class="header">
         <div class="brand">
-          <img src="logo.jpeg" alt="Viação Triunfo">
+          <img src="/logo.jpeg" alt="Viação Triunfo" />
           <div class="title">
             <h1 id="titulo">Triunfo • Acesso</h1>
             <small>Nome + Senha (sem e‑mail)</small>
@@ -190,7 +188,7 @@
         <!-- Link para alternar -->
         <div class="switch">
           <span id="switchText">Já tem conta?</span>
-          <a id="toggleLink" href="#entrar" aria-controls="form-login">Entrar</a>
+          <a href="#entrar" id="toggleLink" aria-controls="form-login">Entrar</a>
         </div>
       </div>
 
@@ -290,7 +288,7 @@
     });
     el('btnVoltarCadastro').addEventListener('click', ()=> setView('cadastro'));
 
-    // Verifica Supabase
+    // Supabase carregado?
     if (!window.supabase) {
       alert("Falha ao carregar o Supabase. Verifique js/supabaseClient.js");
       throw new Error("Supabase client ausente");
