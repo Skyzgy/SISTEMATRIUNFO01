@@ -6,6 +6,56 @@
   <meta name="color-scheme" content="light dark" />
   <title>Triunfo System - Gestão de Frota</title>
   <link rel="stylesheet" href="style.css">
+
+  <!-- 🔧 ADIÇÃO 1: Conexão com o Supabase (deve vir ANTES de usar supabase) -->
+  <script type="module" src="/js/supabaseClient.js"></script>
+
+  <!-- 🔧 ADIÇÃO 2: Guarda simples de sessão + controle de menu por perfil -->
+  <script type="module">
+    // Aguarda carregar o client do Supabase
+    // 1) Exigir login (se não logado, redireciona para auth.html)
+    const { data: { user } } = await window.supabase.auth.getUser();
+    if (!user) {
+      // Não logado: manda para tela de login/cadastro
+      window.location.href = "/auth.html";
+    } else {
+      // 2) Busca o perfil (role = 'admin' ou 'driver')
+      const { data: profile, error } = await window.supabase
+        .from("profiles").select("role").eq("user_id", user.id).single();
+
+      if (error) {
+        console.error(error);
+        alert("Erro ao validar perfil do usuário. Tente novamente.");
+      } else {
+        // 3) Regras de UI:
+        //    - Driver: ocultar botões de dashboard/requisições/abastecimento/históricos
+        //    - Admin: sem restrições
+        if (profile?.role === "driver") {
+          // Remover itens de menu que não são de OS
+          document.querySelector('[data-nav-target="dashboard"]')?.remove();          // Dashboard
+          document.querySelector('[data-open-modal="req"]')?.remove();                // Nova Requisição
+          document.querySelector('[data-open-modal="abast"]')?.remove();              // Abastecimento (modal)
+          document.querySelector('[data-nav-target="listagem-abast"]')?.remove();     // Histórico Abastecimentos
+          // (Se tiver tela de listagem de REQ completa, esconda:)
+          // document.querySelector('[data-nav-target="listagem-req"]')?.remove();
+
+          // Sugestão: você pode deixar visível apenas "Abrir OS" e eventualmente "Motoristas" se fizer sentido
+        }
+      }
+    }
+
+    // 4) Botão de SAIR (logout real)
+    window.addEventListener("DOMContentLoaded", () => {
+      const btnExit = document.querySelector(".btn-exit");
+      if (btnExit) {
+        btnExit.addEventListener("click", async () => {
+          await window.supabase.auth.signOut();
+          window.location.href = "/auth.html";
+        });
+      }
+    });
+  </script>
+  <!-- 🔧 FIM DAS ADIÇÕES DO HEAD -->
 </head>
 <body>
   <div class="app-container">
@@ -16,6 +66,7 @@
       </div>
 
       <div class="menu-items" role="menu">
+        <!-- 🔧 DICA: estes data-* são usados no script acima para ocultar quando for driver -->
         <button class="active" data-nav-target="dashboard" aria-current="page" role="menuitem">📊 Dashboard</button>
         <button data-open-modal="os" role="menuitem">📝 Abrir OS</button>
         <button data-open-modal="req" role="menuitem">📦 Nova Requisição</button>
@@ -100,7 +151,7 @@
           </article>
         </div>
 
-        <!-- RESUMOS (sem "Últimos Abastecimentos") -->
+        <!-- RESUMOS -->
         <div class="resumo-container">
           <!-- ÚLTIMAS OS -->
           <section class="card-largo" aria-labelledby="ultimas-os-titulo">
@@ -122,7 +173,7 @@
         </div>
       </section>
 
-      <!-- LISTAGEM COMPLETA OS (com busca) -->
+      <!-- LISTAGEM COMPLETA OS -->
       <section id="tela-listagem-os" class="hidden" aria-labelledby="titulo-listagem-os">
         <header class="top-bar">
           <form class="search-box" role="search" aria-label="Buscar OS">
@@ -139,7 +190,7 @@
         <div class="card-largo" id="tabela-completa-os" role="region" aria-live="polite"></div>
       </section>
 
-      <!-- LISTAGEM COMPLETA REQ (com busca) -->
+      <!-- LISTAGEM COMPLETA REQ -->
       <section id="tela-listagem-req" class="hidden" aria-labelledby="titulo-listagem-req">
         <header class="top-bar">
           <form class="search-box" role="search" aria-label="Buscar Requisições">
@@ -156,7 +207,7 @@
         <div class="card-largo" id="tabela-completa-req" role="region" aria-live="polite"></div>
       </section>
 
-      <!-- LISTAGEM COMPLETA ABASTECIMENTO (com busca) -->
+      <!-- LISTAGEM COMPLETA ABASTECIMENTO -->
       <section id="tela-listagem-abast" class="hidden" aria-labelledby="titulo-listagem-abast">
         <header class="top-bar">
           <form class="search-box" role="search" aria-label="Buscar Abastecimentos">
@@ -337,6 +388,7 @@
     </div>
   </div>
 
+  <!-- Seu JS atual -->
   <script src="script.js"></script>
 </body>
 </html>
