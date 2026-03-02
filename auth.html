@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Entrar - Sistema Triunfo</title>
+
+  <!-- Conexão com Supabase: PRECISA ser type="module" -->
+  <script type="module" src="/js/supabaseClient.js"></script>
+
+  <style>
+    :root{ color-scheme: light dark; }
+    body{font-family:system-ui, Arial, sans-serif; max-width:720px; margin:32px auto; padding:0 16px;}
+    h1{margin-bottom:8px}
+    form{border:1px solid #ddd; padding:16px; border-radius:8px; margin-top:16px; background:Canvas;}
+    input{display:block; width:100%; margin:8px 0 12px; padding:10px; border:1px solid #ccc; border-radius:6px; background:Canvas; color:CanvasText}
+    button{padding:10px 16px; border:0; border-radius:6px; background:#0b5; color:#fff; cursor:pointer}
+    button:hover{background:#0a4}
+    .muted{color:#666; font-size:14px}
+    .wrap{display:grid; gap:16px}
+  </style>
+</head>
+<body>
+  <h1>Login / Cadastro</h1>
+  <p class="muted">Motoristas podem se cadastrar. Depois, no Supabase (Table Editor → <code>profiles</code>), altere seu usuário para <b>admin</b>.</p>
+
+  <div class="wrap">
+    <!-- Cadastro (driver) -->
+    <form id="signup" autocomplete="off">
+      <h3>Cadastrar Motorista</h3>
+      <input id="su_email" type="email" placeholder="E-mail" required />
+      <input id="su_pass" type="password" placeholder="Senha" required minlength="6" />
+      <button type="submit">Criar conta (driver)</button>
+      <div class="muted">A conta criada terá acesso apenas à área de OS.</div>
+    </form>
+
+    <!-- Login -->
+    <form id="signin" autocomplete="off">
+      <h3>Entrar</h3>
+      <input id="si_email" type="email" placeholder="E-mail" required />
+      <input id="si_pass" type="password" placeholder="Senha" required />
+      <button type="submit">Entrar</button>
+    </form>
+  </div>
+
+  <script type="module">
+    // Cadastro: cria usuário (auth) + profile (role=driver)
+    document.getElementById("signup").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const email = su_email.value.trim();
+      const password = su_pass.value;
+
+      const { data, error } = await supabase.auth.signUp({ email, password });
+      if (error) { alert("Erro no cadastro: " + error.message); return; }
+
+      const user = data.user;
+      const { error: pErr } = await supabase.from("profiles").insert({
+        user_id: user.id, role: "driver"
+      });
+      if (pErr) { alert("Erro ao salvar perfil: " + pErr.message); return; }
+
+      alert("Motorista cadastrado! Agora faça login.");
+      su_email.value = ""; su_pass.value = "";
+    });
+
+    // Login: depois de logar, redireciona para a página principal
+    document.getElementById("signin").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const email = si_email.value.trim();
+      const password = si_pass.value;
+
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) { alert("Erro no login: " + error.message); return; }
+
+      window.location.href = "/";
+    });
+  </script>
+</body>
+</html>
