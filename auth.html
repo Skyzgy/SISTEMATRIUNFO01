@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1"/>
   <title>Triunfo • Acesso</title>
 
-  <!-- Conexão com Supabase -->
+  <!-- Conexão com Supabase (mantenha seu js/supabaseClient.js com a URL e ANON KEY) -->
   js/supabaseClient.js</script>
 
   <style>
@@ -29,7 +29,7 @@
       --shadow: 0 28px 72px rgba(0,0,0,.55);
       --radius: 18px;
 
-      /* Transparência única (card e painel usam o mesmo alpha) */
+      /* Transparência única (card e painel usam o MESMO alpha) */
       --glass-alpha: 0.40;  /* ajuste fino: 0.35 ~ 0.50 */
     }
 
@@ -115,12 +115,12 @@
 
     .brand{ display:flex; align-items:center; gap:16px; }
 
-    /* Logo pequena no cabeçalho — oculta (como você pediu) */
+    /* Logo pequena no cabeçalho — oculta, conforme seu pedido */
     .brand img{ display:none; }
 
     .title{ display:flex; gap:4px; flex-direction:column; }
     .title h1{ margin:0; font-size:22px; letter-spacing:.3px }
-    /* 🔥 Subtítulo removido (era a frase em verde) */
+    /* Subtítulo removido (aquela frase “Nome + Senha…”) */
     .title small{ display:none; }
 
     .switch{ font-size:15px; color:var(--muted) }
@@ -174,11 +174,6 @@
     .btn-ghost{ background:transparent; color:var(--muted); border:1px solid rgba(27,36,54,.55) }
     .btn[disabled]{ opacity:.55; cursor:not-allowed }
 
-    .hint{ color:var(--muted); font-size:13px; }
-
-    /* 🔥 A frase em verde de rodapé foi removida — escondemos qualquer .hint logo após o botão */
-    .actions + .hint{ display:none; }
-
     .error{ background:#2a1216; border:1px solid #5c1b21; color:#ffc7c7;
             padding:12px 14px; border-radius:12px; margin-top:12px; display:none }
     .success{ background:#0f251d; border:1px solid #1c5a44; color:#aef0ce;
@@ -198,14 +193,13 @@
     <div class="shell" role="dialog" aria-labelledby="titulo">
       <div class="header">
         <div class="brand">
-          <!-- logo.jpeg (oculta via CSS) -->
+          <!-- (logo do cabeçalho está oculta via CSS) -->
           <div class="title">
             <h1 id="titulo">Triunfo • Acesso</h1>
-            <!-- <small>Nome + Senha (sem e‑mail)</small>  ← REMOVIDO -->
           </div>
         </div>
 
-        <!-- Link para alternar Cadastro ↔ Entrar -->
+        <!-- ✅ Link de alternância corrigido -->
         <div class="switch">
           <span id="switchText">Já tem conta?</span>
           #entrarEntrar</a>
@@ -293,13 +287,13 @@
         el('toggleLink').setAttribute('aria-controls','form-login');
       }
 
-      // limpar mensagens
+      // limpa mensagens
       ['cad-erro','cad-ok','log-erro'].forEach(id => {
         const n = el(id); if(n){ n.style.display='none'; n.textContent=''; }
       });
     }
 
-    // Alternância via link
+    // Alternância via link (usa o id="toggleLink")
     el('toggleLink').addEventListener('click', (e)=>{
       e.preventDefault();
       const toLogin = el('form-cadastro').classList.contains('hidden') === false;
@@ -396,3 +390,4 @@
   </script>
 </body>
 </html>
+``
