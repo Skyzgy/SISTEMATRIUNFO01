@@ -5,88 +5,55 @@
   <meta name="viewport" content="width=device-width,initial-scale=1"/>
   <title>Triunfo • Acesso</title>
 
-  <!-- Conexão com Supabase (deve existir em /js/supabaseClient.js) -->
-  js/supabaseClient.js</script>
+  <!-- ✅ Conexão com Supabase (corrigido) -->
+  <!-- Este arquivo deve criar window.supabase -->
+  <script src="js/supabaseClient.js"></script>
 
   <style>
     :root{
       color-scheme: light dark;
-
-      /* ===== Paleta Triunfo ===== */
-      --brand:       #E61414;   /* vermelho principal */
-      --brand-700:   #c51212;
-      --brand-500:   #ff4343;
-
-      --bg-0: #0a0c11;
-      --bg-1: #0f1116;
-
-      --card:   #0f1524;
-      --stroke: #1b2436;
-
-      --text:   #eaf0f6;
-      --muted:  #9fb0c6;
-
-      --shadow: 0 28px 72px rgba(0,0,0,.55);
-      --radius: 18px;
-
-      /* Transparência única (card e painel usam o MESMO alpha) */
-      --glass-alpha: 0.40;  /* ajuste fino: 0.35 ~ 0.50 */
+      --brand:#E61414; --brand-700:#c51212; --brand-500:#ff4343;
+      --bg-0:#0a0c11; --bg-1:#0f1116;
+      --card:#0f1524; --stroke:#1b2436;
+      --text:#eaf0f6; --muted:#9fb0c6;
+      --shadow:0 28px 72px rgba(0,0,0,.55);
+      --radius:18px;
+      --glass-alpha:.40;
     }
 
     html, body { height:100% }
 
-    /* =========================================
-       FUNDO com LOGO como PRIMEIRA camada (marca d’água tela cheia)
-       ========================================= */
     body{
       margin:0;
       font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
       color:var(--text);
-
-      /* 1) LOGO  2..4) halos/gradiente */
       background-image:
-        url("logo.jpeg"),  /* ← troque se sua logo estiver em outro caminho (ex.: "img/logo.png") */
+        url("logo.jpeg"),
         radial-gradient(48% 32% at 18% 8%, rgba(230,20,20,.22) 0%, rgba(230,20,20,0) 60%),
         radial-gradient(42% 34% at 82% -4%, rgba(255,255,255,.06) 0%, rgba(255,255,255,0) 60%),
         linear-gradient(180deg, var(--bg-0) 0%, var(--bg-1) 70%);
       background-position:
-        center center,
-        18% 8%,
-        82% -4%,
-        center;
+        center center, 18% 8%, 82% -4%, center;
       background-repeat: no-repeat, no-repeat, no-repeat, no-repeat;
-
-      /* LOGO em tela cheia (preenche; pode cortar bordas) */
-      background-size:
-        cover,
-        auto,
-        auto,
-        auto;
-
-      /* fixo no viewport */
+      background-size: cover, auto, auto, auto;
       background-attachment: fixed, fixed, fixed, fixed;
-
-      /* mistura sutil p/ fundo escuro */
       background-blend-mode: screen, normal, normal, normal;
     }
 
-    /* camada sutil para equalizar a logo e dar transparência */
     body::before{
       content:"";
       position: fixed; inset: 0; pointer-events: none; z-index: 0;
-      background: rgba(10,12,17,.28); /* ↑ aumente p/ .35/.40 se quiser a logo mais apagada */
+      background: rgba(10,12,17,.28);
     }
 
-    /* ===== container ===== */
     .wrap{
       min-height:100svh;
       display:flex; align-items:center; justify-content:center;
       padding:36px;
       position: relative;
-      z-index: 1; /* acima da marca d’água */
+      z-index: 1;
     }
 
-    /* ===== card (usa --glass-alpha) ===== */
     .shell{
       width:min(1100px, 100%);
       background:
@@ -110,18 +77,23 @@
       gap:16px; padding:26px 28px;
       background: rgba(255,255,255,.02);
       border-bottom:1px solid rgba(27,36,54,.5);
+      /* ✅ garante o header acima de qualquer conteúdo interno */
+      position: relative; z-index: 2;
     }
 
     .brand{ display:flex; align-items:center; gap:16px; }
-    .brand img{ display:none; }       /* oculta a logo pequena do cabeçalho */
+    .brand img{ display:none; }
 
     .title{ display:flex; gap:4px; flex-direction:column; }
     .title h1{ margin:0; font-size:22px; letter-spacing:.3px }
-    .title small{ display:none; }     /* subtítulo removido */
+    .title small{ display:none; }
 
-    .switch{ font-size:15px; color:var(--muted); display:flex; align-items:center; gap:10px; }
+    .switch{
+      font-size:15px; color:var(--muted);
+      display:flex; align-items:center; gap:10px;
+    }
     .switch .switch-link{
-      color:#ffffff !important;               /* garante contraste */
+      color:#ffffff !important;
       text-underline-offset:4px;
       font-weight:800;
       padding:8px 12px;
@@ -129,7 +101,9 @@
       transition:.15s;
       border:1px solid transparent;
       text-decoration: underline;
-      text-shadow: 0 1px 2px rgba(0,0,0,.4);  /* melhora leitura sobre fundo claro */
+      text-shadow: 0 1px 2px rgba(0,0,0,.4);
+      cursor: pointer;                 /* ✅ garante ponteiro de clique */
+      pointer-events: auto;            /* ✅ garante clique */
     }
     .switch .switch-link:hover{
       background: rgba(230,20,20,.12);
@@ -138,7 +112,6 @@
 
     .content{ padding:28px; }
 
-    /* ===== painel (mesma transparência do card) ===== */
     .panel{
       background:
         linear-gradient(180deg, rgba(255,255,255,.03), rgba(0,0,0,.02)),
@@ -196,14 +169,13 @@
     <div class="shell" role="dialog" aria-labelledby="titulo">
       <div class="header">
         <div class="brand">
-          <!-- logo pequena oculta -->
           <div class="title"><h1 id="titulo">Triunfo • Acesso</h1></div>
         </div>
 
-        <!-- Link de alternância CORRETO e VISÍVEL -->
+        <!-- ✅ Link de alternância CORRETO -->
         <div class="switch">
           <span id="switchText">Já tem conta?</span>
-          #entrarEntrar</a>
+          <a id="toggleLink" class="switch-link" href="#entrar" aria-controls="form-login">Entrar</a>
         </div>
       </div>
 
@@ -304,7 +276,7 @@
       });
     }
 
-    // Alternância via link (usa o id="toggleLink")
+    // ✅ Alternância via link (id="toggleLink" agora existe)
     el('toggleLink').addEventListener('click', (e)=>{
       e.preventDefault();
       const toLogin = el('form-cadastro').classList.contains('hidden') === false;
@@ -312,7 +284,7 @@
     });
 
     // Voltar do login para o cadastro
-    el('btnVoltarCadastro').addEventListener('click', ()=> setView('cadastro'));
+    el('btnVoltarCadastro').addEventListener('click', () => setView('cadastro'));
 
     // -------- Cadastro (Nome + Senha >= 6) --------
     el('form-cadastro').addEventListener('submit', async (e)=>{
@@ -340,11 +312,14 @@
       while (!criado && tentativas < 3) {
         const { data, error } = await supabase.auth.signUp({ email, password: senha });
         if (!error) {
+          // ⚠️ Em projetos com verificação de e-mail, data.user pode estar null até confirmar
           const user = data.user;
-          const { error: pErr } = await supabase.from('profiles').insert({
-            user_id: user.id, role: 'driver', full_name: nome
-          });
-          if (pErr) { ultimoErro = pErr; break; }
+          if (user) {
+            const { error: pErr } = await supabase.from('profiles').insert({
+              user_id: user.id, role: 'driver', full_name: nome
+            });
+            if (pErr) { ultimoErro = pErr; break; }
+          }
           el('cad-ok').textContent = 'Conta criada! Clique em “Entrar” para acessar.';
           el('cad-ok').style.display='block';
           criado = true;
