@@ -1,13 +1,33 @@
-// js/supabaseClient.js
-// Este arquivo deve ser carregado como: <script type="module" src="js/supabaseClient.js"></script>
+// /js/supabaseClient.js
+// Requer que a lib UMD do Supabase tenha sido carregada antes:
+// <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
 
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+(() => {
+  // >>>>>>>>>>>>>>>>  SEUS DADOS  <<<<<<<<<<<<<<<<
+  const SUPABASE_URL = 'https://vwoholfhrskkeuxbissq.supabase.co';
+  const SUPABASE_ANON_KEY = 'sb_publishable_FFLXV1o0MUUPJkmjXzURQw_3Emd9h07';
+  // >>>>>>>>>>>>>>>>  /SEUS DADOS  <<<<<<<<<<<<<<<
 
-const SUPABASE_URL = "https://vwoholfhrskkeuxbissq.supabase.co";  // << sua URL
-const SUPABASE_ANON_KEY = "sb_publishable_FFLXV1o0MUUPJkmjXzURQw_3Emd9h07"; // << sua anon key
+  const lib = window.supabase; // a lib UMD expõe o namespace 'supabase' com createClient
 
-if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
-  throw new Error("SUPABASE_URL/ANON_KEY ausentes no supabaseClient.js");
-}
+  if (!lib || typeof lib.createClient !== 'function') {
+    console.error('[supabaseClient] Biblioteca do Supabase não carregada.');
+    return;
+  }
 
-window.supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  try {
+    const client = lib.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+      auth: {
+        persistSession: true,
+        autoRefreshToken: true
+      }
+    });
+
+    // Tornamos o CLIENT disponível globalmente (substitui o namespace da lib)
+    window.supabase = client;
+    window.supabaseClientReady = true;
+    console.info('[supabaseClient] Cliente do Supabase inicializado.');
+  } catch (e) {
+    console.error('[supabaseClient] Erro ao criar client:', e);
+  }
+})();
