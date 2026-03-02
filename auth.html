@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1"/>
   <title>Triunfo • Acesso</title>
 
-  <!-- Conexão com Supabase (mantenha seu js/supabaseClient.js com a URL e ANON KEY) -->
+  <!-- Conexão com Supabase (deve existir em /js/supabaseClient.js) -->
   js/supabaseClient.js</script>
 
   <style>
@@ -29,7 +29,7 @@
       --shadow: 0 28px 72px rgba(0,0,0,.55);
       --radius: 18px;
 
-      /* Transparência única (card e painel usam o MESMO alpha) */
+      /* transparência única para card e painel */
       --glass-alpha: 0.40;  /* ajuste fino: 0.35 ~ 0.50 */
     }
 
@@ -45,7 +45,7 @@
 
       /* 1) LOGO  2..4) halos/gradiente */
       background-image:
-        url("logo.jpeg"),  /* ← troque se sua logo estiver em outro caminho (ex.: "img/logo.png") */
+        url("logo.jpeg"),
         radial-gradient(48% 32% at 18% 8%, rgba(230,20,20,.22) 0%, rgba(230,20,20,0) 60%),
         radial-gradient(42% 34% at 82% -4%, rgba(255,255,255,.06) 0%, rgba(255,255,255,0) 60%),
         linear-gradient(180deg, var(--bg-0) 0%, var(--bg-1) 70%);
@@ -56,28 +56,24 @@
         center;
       background-repeat: no-repeat, no-repeat, no-repeat, no-repeat;
 
-      /* LOGO de fundo em tela cheia */
-      background-size:
-        cover,
-        auto,
-        auto,
-        auto;
+      /* LOGO em tela cheia */
+      background-size: cover, auto, auto, auto;
 
-      /* Preso ao viewport */
+      /* fixo no viewport */
       background-attachment: fixed, fixed, fixed, fixed;
 
-      /* Mistura sutil para a logo em fundo escuro */
+      /* mistura sutil p/ fundo escuro */
       background-blend-mode: screen, normal, normal, normal;
     }
 
-    /* Camada sutil para uniformizar e deixar a logo mais discreta */
+    /* camada sutil para equalizar a logo e dar transparência */
     body::before{
       content:"";
       position: fixed; inset: 0; pointer-events: none; z-index: 0;
-      background: rgba(10,12,17,.28); /* ↑ aumente p/ 0.35 se quiser a logo ainda mais apagada */
+      background: rgba(10,12,17,.28); /* ↑ aumente p/ .35/.40 se quiser a logo mais apagada */
     }
 
-    /* ===== Container principal ===== */
+    /* ===== container ===== */
     .wrap{
       min-height:100svh;
       display:flex; align-items:center; justify-content:center;
@@ -86,7 +82,7 @@
       z-index: 1; /* acima da marca d’água */
     }
 
-    /* ===== Card (transparência igual à do painel) ===== */
+    /* ===== card (usa --glass-alpha) ===== */
     .shell{
       width:min(1100px, 100%);
       background:
@@ -99,7 +95,6 @@
       position:relative;
     }
 
-    /* Filete superior vermelho Triunfo */
     .shell::before{
       content:"";
       position:absolute; left:0; top:0; right:0; height:8px;
@@ -114,29 +109,32 @@
     }
 
     .brand{ display:flex; align-items:center; gap:16px; }
-
-    /* Logo pequena no cabeçalho — oculta, conforme seu pedido */
-    .brand img{ display:none; }
+    .brand img{ display:none; }       /* 👍 remove a logo pequena do cabeçalho */
 
     .title{ display:flex; gap:4px; flex-direction:column; }
     .title h1{ margin:0; font-size:22px; letter-spacing:.3px }
-    /* Subtítulo removido (aquela frase “Nome + Senha…”) */
-    .title small{ display:none; }
+    .title small{ display:none; }     /* 👍 remove a frase sob o título */
 
-    .switch{ font-size:15px; color:var(--muted) }
-    .switch a{
-      color:#fff; text-underline-offset:4px; font-weight:800;
-      padding:8px 12px; border-radius:10px; transition:.15s;
+    .switch{ font-size:15px; color:var(--muted); display:flex; align-items:center; gap:10px; }
+    .switch .switch-link{
+      color:#ffffff !important;               /* 👍 garante contraste */
+      text-underline-offset:4px;
+      font-weight:800;
+      padding:8px 12px;
+      border-radius:10px;
+      transition:.15s;
       border:1px solid transparent;
+      text-decoration: underline;
+      text-shadow: 0 1px 2px rgba(0,0,0,.4);  /* melhora a leitura sobre fundos claros */
     }
-    .switch a:hover{
+    .switch .switch-link:hover{
       background: rgba(230,20,20,.12);
       border-color: rgba(230,20,20,.32);
     }
 
     .content{ padding:28px; }
 
-    /* ===== Painel do formulário (mesma transparência do card) ===== */
+    /* ===== painel (mesma transparência do card) ===== */
     .panel{
       background:
         linear-gradient(180deg, rgba(255,255,255,.03), rgba(0,0,0,.02)),
@@ -146,8 +144,9 @@
       padding:24px;
       max-width:760px;
       margin-inline:auto;
-      backdrop-filter: blur(4px);              /* vidro leve (opcional) */
+      backdrop-filter: blur(4px);
     }
+
     .panel h2{ margin:0 0 16px 0; font-size:20px; letter-spacing:.2px }
 
     label{ display:block; font-size:14px; color:var(--muted); margin:12px 0 6px }
@@ -193,16 +192,16 @@
     <div class="shell" role="dialog" aria-labelledby="titulo">
       <div class="header">
         <div class="brand">
-          <!-- (logo do cabeçalho está oculta via CSS) -->
+          <!-- (logo pequena oculta via CSS) -->
           <div class="title">
             <h1 id="titulo">Triunfo • Acesso</h1>
           </div>
         </div>
 
-        <!-- ✅ Link de alternância corrigido -->
+        <!-- ✅ Link de alternância CORRETO e VISÍVEL -->
         <div class="switch">
           <span id="switchText">Já tem conta?</span>
-          #entrarEntrar</a>
+          <a id="toggleLink" class="switch-link" href="#entrar" aria-controls="form-login">Entrar</a>
         </div>
       </div>
 
@@ -293,12 +292,14 @@
       });
     }
 
-    // Alternância via link (usa o id="toggleLink")
+    // Alternância via link
     el('toggleLink').addEventListener('click', (e)=>{
       e.preventDefault();
       const toLogin = el('form-cadastro').classList.contains('hidden') === false;
       setView(toLogin ? 'login' : 'cadastro');
     });
+
+    // Voltar do login para o cadastro
     el('btnVoltarCadastro').addEventListener('click', ()=> setView('cadastro'));
 
     // Supabase carregado?
@@ -390,4 +391,3 @@
   </script>
 </body>
 </html>
-``
