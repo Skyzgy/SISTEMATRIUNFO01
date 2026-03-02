@@ -5,72 +5,167 @@
   <meta name="viewport" content="width=device-width,initial-scale=1"/>
   <title>Entrar - Sistema Triunfo</title>
 
-  <!-- Conexão com Supabase: PRECISA ser type="module" -->
-  <script type="module" src="/js/supabaseClient.js"></script>
+  <!-- Conexão com Supabase (caminho relativo + type=module) -->
+  <script type="module" src="js/supabaseClient.js"></script>
 
   <style>
-    :root{ color-scheme: light dark; }
-    body{font-family:system-ui, Arial, sans-serif; max-width:720px; margin:32px auto; padding:0 16px;}
-    h1{margin-bottom:8px}
-    form{border:1px solid #ddd; padding:16px; border-radius:8px; margin-top:16px; background:Canvas;}
-    input{display:block; width:100%; margin:8px 0 12px; padding:10px; border:1px solid #ccc; border-radius:6px; background:Canvas; color:CanvasText}
-    button{padding:10px 16px; border:0; border-radius:6px; background:#0b5; color:#fff; cursor:pointer}
-    button:hover{background:#0a4}
-    .muted{color:#666; font-size:14px}
-    .wrap{display:grid; gap:16px}
+    :root {
+      color-scheme: light dark;
+      /* Paleta Triunfo (ajuste como preferir) */
+      --bg: #0f1115;
+      --card: #141821;
+      --muted: #95a3b3;
+      --text: #e8edf2;
+      --primary: #E61414;   /* vermelho Triunfo */
+      --primary-700: #c51212;
+      --accent: #0bb36b;    /* verde sucesso */
+    }
+
+    html, body { height:100%; }
+    body{
+      margin:0; font-family:system-ui, Arial, sans-serif; color:var(--text);
+      background: linear-gradient(180deg, #0b0d12 0%, #0f1115 60%, #0f1115 100%);
+      display:flex; align-items:center; justify-content:center; padding:24px;
+    }
+    .card{
+      width:min(720px, 100%); background:var(--card);
+      border:1px solid #1d2330; border-radius:14px; padding:24px;
+      box-shadow: 0 10px 30px rgba(0,0,0,.35);
+    }
+    .brand{ display:flex; align-items:center; gap:12px; margin-bottom:12px; }
+    .brand img{ width:40px; height:40px; object-fit:cover; border-radius:6px; }
+    .brand h1{ font-size:22px; margin:0; letter-spacing:.2px; }
+    .subtitle{ color:var(--muted); margin:0 0 18px 0; font-size:14px; }
+
+    .grid{ display:grid; gap:16px; grid-template-columns: 1fr 1fr; }
+    @media (max-width: 720px){ .grid{ grid-template-columns: 1fr; } }
+
+    .panel{ border:1px solid #222a39; border-radius:12px; padding:16px; background:#111622; }
+    .panel h3{ margin:0 0 10px 0; font-size:16px; }
+    label{ font-size:13px; color:var(--muted); display:block; margin-bottom:6px; }
+    input{
+      width:100%; padding:11px 12px; border-radius:8px; border:1px solid #2a3242;
+      background:#0f1420; color:var(--text); outline:none;
+    }
+    input:focus{ border-color:#39507a; box-shadow: 0 0 0 3px rgba(57,80,122,.25); }
+    .row{ display:grid; gap:8px; margin-bottom:12px; }
+    button{
+      display:inline-flex; align-items:center; justify-content:center; gap:8px;
+      border:0; cursor:pointer; padding:11px 16px; border-radius:8px; font-weight:600;
+    }
+    .btn-primary{ background:var(--primary); color:#fff; }
+    .btn-primary:hover{ background:var(--primary-700); }
+    .btn-ok{ background:var(--accent); color:#002413; }
+    .muted{ color:var(--muted); font-size:12px; margin-top:6px; }
+    .divider{ height:1px; background:#202737; margin:16px 0; }
   </style>
 </head>
 <body>
-  <h1>Login / Cadastro</h1>
-  <p class="muted">Motoristas podem se cadastrar. Depois, no Supabase (Table Editor → <code>profiles</code>), altere seu usuário para <b>admin</b>.</p>
+  <div class="card">
+    <div class="brand">
+      <img src="logo.jpeg" alt="Viação Triunfo">
+      <h1>Triunfo • Login / Cadastro</h1>
+    </div>
+    <p class="subtitle">
+      Cadastro simplificado para motoristas: <b>Nome + Senha</b> (sem e‑mail).
+      Depois você pode promover seu usuário para <b>admin</b> na tabela <code>profiles</code>.
+    </p>
 
-  <div class="wrap">
-    <!-- Cadastro (driver) -->
-    <form id="signup" autocomplete="off">
-      <h3>Cadastrar Motorista</h3>
-      <input id="su_email" type="email" placeholder="E-mail" required />
-      <input id="su_pass" type="password" placeholder="Senha" required minlength="6" />
-      <button type="submit">Criar conta (driver)</button>
-      <div class="muted">A conta criada terá acesso apenas à área de OS.</div>
-    </form>
+    <div class="grid">
+      <!-- CADASTRO -->
+      <form id="signup" class="panel" autocomplete="off">
+        <h3>Cadastro de Motorista</h3>
+        <div class="row">
+          <label for="su_nome">Nome do motorista</label>
+          <input id="su_nome" type="text" placeholder="Ex.: João da Silva" required />
+        </div>
+        <div class="row">
+          <label for="su_senha">Senha / PIN (mín. 4)</label>
+          <input id="su_senha" type="password" inputmode="numeric" minlength="4" placeholder="Ex.: 4321" required />
+        </div>
+        <button class="btn-ok" type="submit">Criar conta (driver)</button>
+        <div class="muted">É gerado um e‑mail técnico (<code>nome@drivers.local</code>) apenas para autenticar.</div>
+      </form>
 
-    <!-- Login -->
-    <form id="signin" autocomplete="off">
-      <h3>Entrar</h3>
-      <input id="si_email" type="email" placeholder="E-mail" required />
-      <input id="si_pass" type="password" placeholder="Senha" required />
-      <button type="submit">Entrar</button>
-    </form>
+      <!-- LOGIN -->
+      <form id="signin" class="panel" autocomplete="off">
+        <h3>Entrar</h3>
+        <div class="row">
+          <label for="si_nome">Nome do motorista</label>
+          <input id="si_nome" type="text" placeholder="Ex.: João da Silva" required />
+        </div>
+        <div class="row">
+          <label for="si_senha">Senha / PIN</label>
+          <input id="si_senha" type="password" inputmode="numeric" placeholder="Sua senha" required />
+        </div>
+        <button class="btn-primary" type="submit">Entrar</button>
+      </form>
+    </div>
+
+    <div class="divider"></div>
+    <p class="muted">Dica: se um nome já existir, o sistema tentará <code>Nome 2</code>, <code>Nome 3</code>…</p>
   </div>
 
   <script type="module">
-    // Cadastro: cria usuário (auth) + profile (role=driver)
+    // --- Funções utilitárias ---
+    const FAKE_DOMAIN = "drivers.local";
+    function slugifyName(name){
+      const slug = name
+        .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+        .trim().toLowerCase().replace(/[^a-z0-9 ]/g, '').replace(/\s+/g, '.');
+      return slug || `motorista.${Math.floor(Math.random()*1e6)}`; // fallback se o nome ficar vazio
+    }
+    function nameToEmail(name){ return `${slugifyName(name)}@${FAKE_DOMAIN}`; }
+
+    // Garante que o client do Supabase está disponível
+    if (!window.supabase) {
+      alert("Falha ao carregar o Supabase. Verifique js/supabaseClient.js");
+      throw new Error("Supabase client ausente");
+    }
+
+    // --- CADASTRO (Nome + Senha) ---
     document.getElementById("signup").addEventListener("submit", async (e) => {
       e.preventDefault();
-      const email = su_email.value.trim();
-      const password = su_pass.value;
+      const nome = document.getElementById("su_nome").value.trim();
+      const senha = document.getElementById("su_senha").value;
+      if (nome.length < 2) return alert("Informe um nome válido.");
+      if (senha.length < 4) return alert("Senha/PIN deve ter pelo menos 4 caracteres.");
 
-      const { data, error } = await supabase.auth.signUp({ email, password });
-      if (error) { alert("Erro no cadastro: " + error.message); return; }
+      let email = nameToEmail(nome);
+      let tentativas = 0, criado = false, ultimoErro = null;
 
-      const user = data.user;
-      const { error: pErr } = await supabase.from("profiles").insert({
-        user_id: user.id, role: "driver"
-      });
-      if (pErr) { alert("Erro ao salvar perfil: " + pErr.message); return; }
-
-      alert("Motorista cadastrado! Agora faça login.");
-      su_email.value = ""; su_pass.value = "";
+      while (!criado && tentativas < 3) {
+        const { data, error } = await supabase.auth.signUp({ email, password: senha });
+        if (!error) {
+          const user = data.user;
+          const { error: pErr } = await supabase.from("profiles").insert({
+            user_id: user.id, role: "driver", full_name: nome
+          });
+          if (pErr) return alert("Erro ao salvar perfil: " + pErr.message);
+          alert("Conta criada! Agora faça login.");
+          criado = true;
+        } else if ((error.message || "").toLowerCase().includes("already registered")) {
+          tentativas++;
+          email = nameToEmail(`${nome} ${tentativas+1}`);
+          ultimoErro = error;
+        } else {
+          ultimoErro = error;
+          break;
+        }
+      }
+      if (!criado && ultimoErro) alert("Não foi possível criar a conta: " + ultimoErro.message);
     });
 
-    // Login: depois de logar, redireciona para a página principal
+    // --- LOGIN (Nome + Senha) ---
     document.getElementById("signin").addEventListener("submit", async (e) => {
       e.preventDefault();
-      const email = si_email.value.trim();
-      const password = si_pass.value;
+      const nome = document.getElementById("si_nome").value.trim();
+      const senha = document.getElementById("si_senha").value;
+      if (!nome || !senha) return alert("Preencha nome e senha.");
 
-      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-      if (error) { alert("Erro no login: " + error.message); return; }
+      const email = nameToEmail(nome);
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password: senha });
+      if (error) return alert("Erro no login: " + error.message);
 
       window.location.href = "/";
     });
