@@ -5,8 +5,8 @@
   <meta name="viewport" content="width=device-width,initial-scale=1"/>
   <title>Triunfo • Acesso</title>
 
-  <!-- Conexão com Supabase (mantenha seu js/supabaseClient.js como já está) -->
-  <script type="module" src="js/supabaseClient.js"></script>
+  <!-- Conexão com Supabase -->
+  js/supabaseClient.js</script>
 
   <style>
     :root{
@@ -29,7 +29,7 @@
       --shadow: 0 28px 72px rgba(0,0,0,.55);
       --radius: 18px;
 
-      /* Transparência que queremos IGUAL no card (amarelo) e painel (azul) */
+      /* Transparência única (card e painel usam o mesmo alpha) */
       --glass-alpha: 0.40;  /* ajuste fino: 0.35 ~ 0.50 */
     }
 
@@ -43,7 +43,7 @@
       font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
       color:var(--text);
 
-      /* 1) LOGO — ocupa a TELA TODA | 2..4) halos/gradiente */
+      /* 1) LOGO  2..4) halos/gradiente */
       background-image:
         url("logo.jpeg"),  /* ← troque se sua logo estiver em outro caminho (ex.: "img/logo.png") */
         radial-gradient(48% 32% at 18% 8%, rgba(230,20,20,.22) 0%, rgba(230,20,20,0) 60%),
@@ -56,7 +56,7 @@
         center;
       background-repeat: no-repeat, no-repeat, no-repeat, no-repeat;
 
-      /* LOGO de fundo em tela cheia (preenche; pode cortar cantos) */
+      /* LOGO de fundo em tela cheia */
       background-size:
         cover,
         auto,
@@ -86,7 +86,7 @@
       z-index: 1; /* acima da marca d’água */
     }
 
-    /* ===== Card (área amarela no seu print) — transparência controlada por --glass-alpha ===== */
+    /* ===== Card (transparência igual à do painel) ===== */
     .shell{
       width:min(1100px, 100%);
       background:
@@ -115,12 +115,13 @@
 
     .brand{ display:flex; align-items:center; gap:16px; }
 
-    /* ===== Logo pequena no cabeçalho — REMOVIDA (como você pediu) ===== */
+    /* Logo pequena no cabeçalho — oculta (como você pediu) */
     .brand img{ display:none; }
 
     .title{ display:flex; gap:4px; flex-direction:column; }
     .title h1{ margin:0; font-size:22px; letter-spacing:.3px }
-    .title small{ color:var(--muted) }
+    /* 🔥 Subtítulo removido (era a frase em verde) */
+    .title small{ display:none; }
 
     .switch{ font-size:15px; color:var(--muted) }
     .switch a{
@@ -135,11 +136,11 @@
 
     .content{ padding:28px; }
 
-    /* ===== Painel do formulário (área azul no seu print) — igual ao card externo ===== */
+    /* ===== Painel do formulário (mesma transparência do card) ===== */
     .panel{
       background:
         linear-gradient(180deg, rgba(255,255,255,.03), rgba(0,0,0,.02)),
-        rgba(15, 21, 36, var(--glass-alpha));  /* MESMA transparência do card */
+        rgba(15, 21, 36, var(--glass-alpha));
       border:1px solid rgba(27,36,54,.50);
       border-radius:16px;
       padding:24px;
@@ -174,6 +175,10 @@
     .btn[disabled]{ opacity:.55; cursor:not-allowed }
 
     .hint{ color:var(--muted); font-size:13px; }
+
+    /* 🔥 A frase em verde de rodapé foi removida — escondemos qualquer .hint logo após o botão */
+    .actions + .hint{ display:none; }
+
     .error{ background:#2a1216; border:1px solid #5c1b21; color:#ffc7c7;
             padding:12px 14px; border-radius:12px; margin-top:12px; display:none }
     .success{ background:#0f251d; border:1px solid #1c5a44; color:#aef0ce;
@@ -193,17 +198,17 @@
     <div class="shell" role="dialog" aria-labelledby="titulo">
       <div class="header">
         <div class="brand">
-          <!-- <img src="logo.jpeg" alt="Viação Triunfo">  ← agora oculto via CSS -->
+          <!-- logo.jpeg (oculta via CSS) -->
           <div class="title">
             <h1 id="titulo">Triunfo • Acesso</h1>
-            <small>Nome + Senha (sem e‑mail)</small>
+            <!-- <small>Nome + Senha (sem e‑mail)</small>  ← REMOVIDO -->
           </div>
         </div>
 
         <!-- Link para alternar Cadastro ↔ Entrar -->
         <div class="switch">
           <span id="switchText">Já tem conta?</span>
-          <a href="#entrar" id="toggleLink" aria-controls="form-login">Entrar</a>
+          #entrarEntrar</a>
         </div>
       </div>
 
@@ -224,7 +229,6 @@
 
           <div class="actions">
             <button class="btn btn-brand" type="submit" id="btnCriar">Criar conta</button>
-            <span class="hint">Geramos um e‑mail técnico <code>nome@drivers.local</code> apenas para autenticar.</span>
           </div>
 
           <div class="error" id="cad-erro"></div>
