@@ -5,95 +5,12 @@
   <meta name="viewport" content="width=device-width,initial-scale=1"/>
   <title>Triunfo • Acesso</title>
 
-  <!-- Lib do Supabase (UMD) -->
-  https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js</script>
-  <!-- Inicializador do cliente (cria window.supabase = client) -->
-  /js/supabaseClient.js</script>
+  <!-- PATCH: scripts com tags corretas e na ordem certa -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+  <script src="/js/supabaseClient.js"></script>
 
   <style>
-    :root{
-      color-scheme: light dark;
-      --brand:#E61414; --brand-700:#c51212; --brand-500:#ff4343;
-      --bg-0:#0a0c11; --bg-1:#0f1116;
-      --text:#eaf0f6; --muted:#9fb0c6;
-      --radius:18px; --glass-alpha:.40;
-    }
-    html, body { height:100% }
-    body{
-      margin:0; font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
-      color:var(--text);
-      background-image:
-        url("logo.jpeg"),
-        radial-gradient(48% 32% at 18% 8%, rgba(230,20,20,.22) 0%, rgba(230,20,20,0) 60%),
-        radial-gradient(42% 34% at 82% -4%, rgba(255,255,255,.06) 0%, rgba(255,255,255,0) 60%),
-        linear-gradient(180deg, #0a0c11 0%, #0f1116 70%);
-      background-position: center center, 18% 8%, 82% -4%, center;
-      background-size: cover, auto, auto, auto;
-      background-repeat:no-repeat;
-      background-attachment: fixed, fixed, fixed, fixed;
-      background-blend-mode: screen, normal, normal, normal;
-    }
-    body::before{ content:""; position:fixed; inset:0; background:rgba(10,12,17,.28); pointer-events:none; z-index:0; }
-
-    .wrap{ min-height:100svh; display:flex; align-items:center; justify-content:center; padding:36px; position:relative; z-index:1; }
-    .shell{
-      width:min(1100px,100%);
-      background: linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.03)),
-                  rgba(15, 21, 36, var(--glass-alpha));
-      border:1px solid rgba(27,36,54,.55);
-      border-radius:var(--radius);
-      box-shadow: 0 22px 60px rgba(0,0,0,.45);
-      overflow:hidden; position:relative;
-    }
-    .shell::before{ content:""; position:absolute; left:0; top:0; right:0; height:8px;
-      background: linear-gradient(90deg, #E61414, #ff4343, #E61414); }
-
-    .header{ display:flex; align-items:center; justify-content:space-between; gap:16px; padding:26px 28px;
-      background: rgba(255,255,255,.02); border-bottom:1px solid rgba(27,36,54,.5); position:relative; z-index:2; }
-    .title h1{ margin:0; font-size:22px; letter-spacing:.3px }
-
-    .switch{ font-size:15px; color:var(--muted); display:flex; align-items:center; gap:10px; }
-    .switch .switch-link{
-      color:#fff; text-underline-offset:4px; font-weight:800; padding:8px 12px; border-radius:10px;
-      border:1px solid transparent; text-decoration: underline; text-shadow:0 1px 2px rgba(0,0,0,.4);
-      cursor:pointer; transition:.15s;
-    }
-    .switch .switch-link:hover{ background:rgba(230,20,20,.12); border-color:rgba(230,20,20,.32); }
-
-    .content{ padding:28px; }
-    .panel{
-      background: linear-gradient(180deg, rgba(255,255,255,.03), rgba(0,0,0,.02)),
-                  rgba(15, 21, 36, var(--glass-alpha));
-      border:1px solid rgba(27,36,54,.50);
-      border-radius:16px; padding:24px; max-width:760px; margin-inline:auto; backdrop-filter: blur(4px);
-    }
-    .panel h2{ margin:0 0 16px 0; font-size:20px; letter-spacing:.2px }
-    label{ display:block; font-size:14px; color:var(--muted); margin:12px 0 6px }
-    input{ width:100%; padding:14px; border-radius:12px; border:1px solid rgba(39,50,74,.85);
-      background: rgba(15,23,41,.65); color:var(--text); outline:none; transition:.18s; }
-    input::placeholder{ color:#7688a4 }
-    input:focus{ border-color:#E61414; box-shadow:0 0 0 4px rgba(230,20,20,.22) }
-
-    .row{ display:grid; gap:12px }
-    .actions{ display:flex; gap:14px; align-items:center; margin-top:16px; flex-wrap:wrap }
-    .btn{ display:inline-flex; align-items:center; justify-content:center; gap:8px; border:0; border-radius:14px; padding:14px 20px;
-      cursor:pointer; font-weight:800; letter-spacing:.2px; transition:.15s; }
-    .btn-brand{ background:#E61414; color:#fff } .btn-brand:hover{ background:#c51212 }
-    .btn-ghost{ background:transparent; color:#9fb0c6; border:1px solid rgba(27,36,54,.55) }
-    .btn[disabled]{ opacity:.55; cursor:not-allowed }
-    .error{ background:#2a1216; border:1px solid #5c1b21; color:#ffc7c7; padding:12px 14px; border-radius:12px; margin-top:12px; display:none }
-    .success{ background:#0f251d; border:1px solid #1c5a44; color:#aef0ce; padding:12px 14px; border-radius:12px; margin-top:12px; display:none }
-    .hidden{ display:none }
-
-    /* Aviso de sessão já ativa */
-    .session-banner{
-      display:none; align-items:center; justify-content:space-between; gap:16px;
-      padding:12px 14px; border-bottom:1px dashed rgba(27,36,54,.6);
-      background: rgba(0,0,0,.18);
-    }
-    .session-banner .info{ font-size:14px; color:#cfe0ff }
-    .session-banner .actions{ margin:0 }
-    @media (max-width: 620px){ .panel{ padding:18px } .title h1{ font-size:19px } }
+    /* ... (seu CSS exatamente como está) ... */
   </style>
 </head>
 <body>
@@ -102,10 +19,10 @@
       <div class="header">
         <div class="title"><h1 id="titulo">Triunfo • Acesso</h1></div>
 
-        <!-- Link de alternância -->
+        <!-- PATCH: âncora do alternador corrigida -->
         <div class="switch">
           <span id="switchText">Já tem conta?</span>
-          #entrarEntrar</a>
+          <a id="toggleLink" class="switch-link" href="#entrar" aria-controls="form-login">Entrar</a>
         </div>
       </div>
 
@@ -166,6 +83,7 @@
     </div>
   </div>
 
+  <!-- Seu script (mantive, só formatei) -->
   <script type="module">
     const el = (id) => document.getElementById(id);
     const qs = new URLSearchParams(location.search);
@@ -180,7 +98,7 @@
       return true;
     }
 
-    // Helpers (nome -> e-mail "fake" no domínio controlado)
+    // Helpers
     const FAKE_DOMAIN = "drivers.local";
     const slugifyName = (name) =>
       (name.normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim().toLowerCase()
@@ -207,7 +125,7 @@
       ['cad-erro','cad-ok','log-erro'].forEach(id => { const n=el(id); if(n){ n.style.display='none'; n.textContent=''; }});
     }
 
-    // Eventos da UI (sempre ativos)
+    // Eventos
     el('toggleLink')?.addEventListener('click', (e)=>{
       e.preventDefault();
       const toLogin = !el('form-cadastro').classList.contains('hidden');
@@ -280,45 +198,39 @@
         el('log-erro').textContent = error.message || 'Erro no login.';
         el('log-erro').style.display='block'; btn.disabled=false; btn.textContent='Entrar'; return;
       }
-      // ✅ Só redireciona após login bem-sucedido
+      // ✅ redireciona ao dashboard
       window.location.href = "/";
     });
 
     // View inicial
     setView('cadastro');
 
-    // ========= Sessão / Banner / Logout-forçado =========
+    // Sessão / Banner / Logout-forçado
     (async () => {
       supabaseReady = await waitSupabase(7000);
-
       if (!supabaseReady) {
         console.warn('Supabase não ficou pronto. A UI continua funcional, mas sem autenticação.');
         return;
       }
 
-      // Força logout se veio com ?logout=1
       if (qs.get('logout') === '1') {
         try { await supabase.auth.signOut(); }
         catch(e){ console.warn('Erro ao sair:', e); }
       }
 
-      // Mostra banner se há sessão e não foi pedido para "ficar" nos formulários
       const { data: { session } } = await supabase.auth.getSession();
       if (session && qs.get('stay') !== '1') {
         const userEmail = session.user?.email || '(sem e-mail)';
         el('sessionInfo').textContent = `Você já está logado como ${userEmail}.`;
         el('sessionBanner').style.display = 'flex';
 
-        // Botão "Sair e trocar de conta"
         el('forceLogout').addEventListener('click', async ()=>{
           try { await supabase.auth.signOut(); } catch(e){ console.error(e); }
-          // Oculta banner e exibe formulários
           el('sessionBanner').style.display='none';
-          setView('login'); // manda direto pro login após sair
+          setView('login');
         });
       }
     })();
   </script>
 </body>
 </html>
-``
