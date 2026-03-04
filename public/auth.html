@@ -5,10 +5,8 @@
   <meta name="viewport" content="width=device-width,initial-scale=1"/>
   <title>Triunfo • Acesso</title>
 
-  <!-- Lib do Supabase (UMD) -->
-  https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js</script>
-  <!-- Inicializador do cliente (cria window.supabase = client) -->
-  /js/supabaseClient.js</script>
+  <!-- REMOVIDO: scripts do Supabase que causavam CSP/MIME -->
+  <!-- Mantivemos tudo local e simples para usar seu backend -->
 
   <style>
     :root{
@@ -105,7 +103,7 @@
         <!-- Link de alternância -->
         <div class="switch">
           <span id="switchText">Já tem conta?</span>
-          #entrarEntrar</a>
+          <a id="toggleLink" class="switch-link" href="#entrar" aria-controls="form-login">Entrar</a>
         </div>
       </div>
 
@@ -166,159 +164,7 @@
     </div>
   </div>
 
-  <script type="module">
-    const el = (id) => document.getElementById(id);
-    const qs = new URLSearchParams(location.search);
-    let supabaseReady = false;
-
-    async function waitSupabase(timeoutMs = 7000){
-      const t0 = Date.now();
-      while (!window.supabase || !window.supabase.auth){
-        await new Promise(r => setTimeout(r, 50));
-        if (Date.now() - t0 > timeoutMs) return false;
-      }
-      return true;
-    }
-
-    // Helpers (nome -> e-mail "fake" no domínio controlado)
-    const FAKE_DOMAIN = "drivers.local";
-    const slugifyName = (name) =>
-      (name.normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim().toLowerCase()
-        .replace(/[^a-z0-9 ]/g,'').replace(/\s+/g,'.')) || `motorista.${Math.floor(Math.random()*1e6)}`;
-    const nameToEmail = (name) => `${slugifyName(name)}@${FAKE_DOMAIN}`;
-
-    function setView(view){ // 'cadastro' | 'login'
-      const isLogin = view === 'login';
-      el('form-cadastro').classList.toggle('hidden', isLogin);
-      el('form-login').classList.toggle('hidden', !isLogin);
-      el('form-login').setAttribute('aria-hidden', (!isLogin).toString());
-
-      if (isLogin){
-        el('switchText').textContent = 'Ainda não tem conta?';
-        el('toggleLink').textContent = 'Cadastrar';
-        el('toggleLink').setAttribute('href', '#cadastrar');
-        el('toggleLink').setAttribute('aria-controls', 'form-cadastro');
-      } else {
-        el('switchText').textContent = 'Já tem conta?';
-        el('toggleLink').textContent = 'Entrar';
-        el('toggleLink').setAttribute('href', '#entrar');
-        el('toggleLink').setAttribute('aria-controls', 'form-login');
-      }
-      ['cad-erro','cad-ok','log-erro'].forEach(id => { const n=el(id); if(n){ n.style.display='none'; n.textContent=''; }});
-    }
-
-    // Eventos da UI (sempre ativos)
-    el('toggleLink')?.addEventListener('click', (e)=>{
-      e.preventDefault();
-      const toLogin = !el('form-cadastro').classList.contains('hidden');
-      setView(toLogin ? 'login' : 'cadastro');
-    });
-    el('btnVoltarCadastro')?.addEventListener('click', () => setView('cadastro'));
-
-    // Submits
-    el('form-cadastro')?.addEventListener('submit', async (e)=>{
-      e.preventDefault();
-      el('cad-erro').style.display='none'; el('cad-ok').style.display='none';
-
-      const nome  = el('su_nome').value.trim();
-      const senha = el('su_senha').value;
-
-      if (nome.length < 2){ el('cad-erro').textContent='Informe um nome válido.'; el('cad-erro').style.display='block'; return; }
-      if (senha.length < 6){ el('cad-erro').textContent='A senha deve ter pelo menos 6 caracteres.'; el('cad-erro').style.display='block'; return; }
-      if (!supabaseReady){ el('cad-erro').textContent='Serviço de autenticação indisponível. Tente novamente.'; el('cad-erro').style.display='block'; return; }
-
-      const btn = el('btnCriar'); btn.disabled = true; btn.textContent='Criando…';
-
-      let email = nameToEmail(nome);
-      let tentativas = 0, criado = false, ultimoErro = null;
-
-      while (!criado && tentativas < 3) {
-        const { data, error } = await supabase.auth.signUp({ email, password: senha });
-        if (!error) {
-          const user = data.user;
-          if (user) {
-            const { error: pErr } = await supabase.from('profiles').insert({
-              user_id: user.id, role: 'driver', full_name: nome
-            });
-            if (pErr) { ultimoErro = pErr; break; }
-          }
-          el('cad-ok').textContent='Conta criada! Clique em “Entrar” para acessar.';
-          el('cad-ok').style.display='block';
-          criado = true; setView('login');
-        } else if ((error.message||'').toLowerCase().includes('already')) {
-          tentativas++; email = nameToEmail(`${nome} ${tentativas+1}`); ultimoErro = error;
-        } else { ultimoErro = error; break; }
-      }
-
-      if (!criado && ultimoErro){
-        el('cad-erro').textContent = `Não foi possível criar a conta: ${ultimoErro.message || ultimoErro}`;
-        el('cad-erro').style.display='block';
-      }
-      btn.disabled = false; btn.textContent='Criar conta';
-    });
-
-    el('form-login')?.addEventListener('submit', async (e)=>{
-      e.preventDefault();
-      el('log-erro').style.display='none';
-
-      const nome  = el('si_nome').value.trim();
-      const senha = el('si_senha').value;
-
-      if (!nome || senha.length < 6){
-        el('log-erro').textContent='Informe um nome e uma senha com pelo menos 6 caracteres.';
-        el('log-erro').style.display='block'; return;
-      }
-      if (!supabaseReady){
-        el('log-erro').textContent='Serviço de autenticação indisponível. Tente novamente.'; el('log-erro').style.display='block'; return;
-      }
-
-      const btn = el('btnEntrar'); btn.disabled = true; btn.textContent='Entrando…';
-      const email = nameToEmail(nome);
-
-      const { error } = await supabase.auth.signInWithPassword({ email, password: senha });
-      if (error){
-        el('log-erro').textContent = error.message || 'Erro no login.';
-        el('log-erro').style.display='block'; btn.disabled=false; btn.textContent='Entrar'; return;
-      }
-      // ✅ Só redireciona após login bem-sucedido
-      window.location.href = "/";
-    });
-
-    // View inicial
-    setView('cadastro');
-
-    // ========= Sessão / Banner / Logout-forçado =========
-    (async () => {
-      supabaseReady = await waitSupabase(7000);
-
-      if (!supabaseReady) {
-        console.warn('Supabase não ficou pronto. A UI continua funcional, mas sem autenticação.');
-        return;
-      }
-
-      // Força logout se veio com ?logout=1
-      if (qs.get('logout') === '1') {
-        try { await supabase.auth.signOut(); }
-        catch(e){ console.warn('Erro ao sair:', e); }
-      }
-
-      // Mostra banner se há sessão e não foi pedido para "ficar" nos formulários
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session && qs.get('stay') !== '1') {
-        const userEmail = session.user?.email || '(sem e-mail)';
-        el('sessionInfo').textContent = `Você já está logado como ${userEmail}.`;
-        el('sessionBanner').style.display = 'flex';
-
-        // Botão "Sair e trocar de conta"
-        el('forceLogout').addEventListener('click', async ()=>{
-          try { await supabase.auth.signOut(); } catch(e){ console.error(e); }
-          // Oculta banner e exibe formulários
-          el('sessionBanner').style.display='none';
-          setView('login'); // manda direto pro login após sair
-        });
-      }
-    })();
-  </script>
+  <!-- JS da página (externo para evitar CSP bloquear inline) -->
+  <script type="module" src="/js/auth-page.js"></script>
 </body>
 </html>
-``
