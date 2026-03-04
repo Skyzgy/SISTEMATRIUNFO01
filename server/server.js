@@ -7,56 +7,57 @@ import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
-// Carregar .env
 dotenv.config();
 
 const app = express();
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Configurações do servidor
-const PORT = process.env.PORT || 3000;
-const ORIGIN = process.env.ORIGIN || `http://localhost:${PORT}`;
+// Em produção (Render) para cookie Secure atrás de proxy HTTPS
+app.set('trust proxy', 1);
 
-// ----------------------
-// MIDDLEWARES GLOBAIS
-// ----------------------
+// ORIGINS (lista: vercel + localhost)
+const ORIGIN = process.env.ORIGIN || '';
+const ORIGINS = (process.env.ORIGINS || ORIGIN || '')
+  .split(',')
+  .map(s => s.trim())
+  .filter(Boolean);
+
+const PORT = process.env.PORT || 3000;
+
+// Middlewares
 app.use(helmet());
-app.use(express.json());       // aceita JSON no body
-app.use(cookieParser());       // lê cookies httpOnly
+app.use(express.json());
+app.use(cookieParser());
 app.use(
   cors({
-    origin: ORIGIN,            // origem permitida
-    credentials: true,         // enviar cookies no fetch()
+    origin: (origin, cb) => {
+      if (!origin || ORIGINS.includes(origin)) return cb(null, true);
+      return cb(new Error(`Origin não permitido: ${origin}`));
+    },
+    credentials: true
   })
 );
 
-// ----------------------
-// ROTAS DA API
-// ----------------------
+// ===== DEBUG opcional =====
+console.log('[BOOT] ORIGINS permitidos:', ORIGINS);
+
+// ROTAS DE API (DEVEM vir ANTES do static e do fallback)
 import authRoutes from './routes/auth.js';
-app.use('/api/auth', authRoutes);
+app.use('/api/auth', (req, _res, next) => {
+  // ===== DEBUG opcional =====
+  console.log('[HIT] /api/auth', req.method, req.url);
+  next();
+}, authRoutes);
 
-// Aqui depois você poderá adicionar:
-// import osRoutes from './routes/os.js';
-// app.use('/api/os', osRoutes);
-
-// ----------------------
-// SERVIR FRONTEND (public)
-// ----------------------
+// Frontend estático
 app.use(express.static(path.join(__dirname, '..', 'public')));
 
-// ----------------------
-// FALLBACK COMPATÍVEL COM EXPRESS 5
-// (pega qualquer rota não atendida acima)
-// ----------------------
+// Fallback final (Express 5 compatível)
 app.use((req, res) => {
   res.sendFile(path.join(__dirname, '..', 'public', 'index.html'));
 });
 
-// ----------------------
-// INICIAR SERVIDOR
-// ----------------------
 app.listen(PORT, () => {
   console.log(`Servidor rodando em http://localhost:${PORT}`);
 });
