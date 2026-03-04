@@ -6,6 +6,7 @@ import helmet from 'helmet';
 import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import authRoutes from './routes/auth.js';
 
 dotenv.config();
 
@@ -13,10 +14,10 @@ const app = express();
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Em produção (Render) para cookie Secure atrás de proxy HTTPS
+// Necessário para cookies Secure atrás de proxy HTTPS do Render
 app.set('trust proxy', 1);
 
-// ORIGINS (lista: vercel + localhost)
+// ORIGINS do .env (lista separada por vírgula)
 const ORIGIN = process.env.ORIGIN || '';
 const ORIGINS = (process.env.ORIGINS || ORIGIN || '')
   .split(',')
@@ -29,28 +30,21 @@ const PORT = process.env.PORT || 3000;
 app.use(helmet());
 app.use(express.json());
 app.use(cookieParser());
-app.use(
-  cors({
-    origin: (origin, cb) => {
-      if (!origin || ORIGINS.includes(origin)) return cb(null, true);
-      return cb(new Error(`Origin não permitido: ${origin}`));
-    },
-    credentials: true
-  })
-);
+app.use(cors({
+  origin: (origin, cb) => {
+    if (!origin || ORIGINS.includes(origin)) return cb(null, true);
+    return cb(new Error(`Origin não permitido: ${origin}`));
+  },
+  credentials: true
+}));
 
-// ===== DEBUG opcional =====
-console.log('[BOOT] ORIGINS permitidos:', ORIGINS);
+// Rotas da API (ANTES do static e fallback)
+app.use('/api/auth', authRoutes);
 
-// ROTAS DE API (DEVEM vir ANTES do static e do fallback)
-import authRoutes from './routes/auth.js';
-app.use('/api/auth', (req, _res, next) => {
-  // ===== DEBUG opcional =====
-  console.log('[HIT] /api/auth', req.method, req.url);
-  next();
-}, authRoutes);
+// Rota de saúde (teste rápido)
+app.get('/api/ping', (_req, res) => res.json({ pong: true }));
 
-// Frontend estático
+// Frontend estático (pasta public)
 app.use(express.static(path.join(__dirname, '..', 'public')));
 
 // Fallback final (Express 5 compatível)

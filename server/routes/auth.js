@@ -23,16 +23,16 @@ function setTokenCookie(res, payload) {
   const token = jwt.sign(payload, JWT_SECRET, { expiresIn: JWT_EXPIRES || '1d' });
   res.cookie('token', token, {
     httpOnly: true,
-    secure: secureCookie,
-    sameSite,
+    secure: secureCookie, // precisa de HTTPS em produção
+    sameSite,             // 'none' para cross-site (Vercel ⇄ Render)
     maxAge: 24 * 60 * 60 * 1000
   });
-  return token;
 }
 
+// POST /api/auth/register
 router.post('/register', async (req, res) => {
   try {
-    const { name, email, password, role = 'user' } = req.body || {};
+    const { name, email, password, role = 'driver' } = req.body || {};
     if (!name || !email || !password)
       return res.status(400).json({ error: 'name, email e password são obrigatórios' });
 
@@ -55,6 +55,7 @@ router.post('/register', async (req, res) => {
   }
 });
 
+// POST /api/auth/login
 router.post('/login', async (req, res) => {
   try {
     const { email, password } = req.body || {};
@@ -76,6 +77,7 @@ router.post('/login', async (req, res) => {
   }
 });
 
+// POST /api/auth/logout
 router.post('/logout', (_req, res) => {
   res.clearCookie('token', {
     httpOnly: true,
@@ -85,6 +87,7 @@ router.post('/logout', (_req, res) => {
   res.json({ ok: true });
 });
 
+// GET /api/auth/me
 router.get('/me', authRequired, async (req, res) => {
   try {
     const db = await getDb();

@@ -1,35 +1,21 @@
 {
   "name": "sistematriunfo",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "description": "Backend + Front (auth) Triunfo",
   "type": "module",
   "scripts": {
     "dev": "nodemon server/server.js",
-    "start": "node server/server.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "node server/server.js"
   },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/Skyzgy/SISTEMATRIUNFO01.git"
-  },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "bugs": {
-    "url": "https://github.com/Skyzgy/SISTEMATRIUNFO01/issues"
-  },
-  "homepage": "https://github.com/Skyzgy/SISTEMATRIUNFO01#readme",
   "dependencies": {
     "bcryptjs": "^3.0.3",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.6",
-    "dotenv": "^17.3.1",
+    "dotenv": "^16.4.5",
     "express": "^5.2.1",
-    "express-rate-limit": "^8.2.1",
     "helmet": "^8.1.0",
-    "jsonwebtoken": "^9.0.3",
-    "sqlite": "^5.1.1",
+    "jsonwebtoken": "^9.0.2",
+    "sqlite": "^5.1.6",
     "sqlite3": "^5.1.7"
   },
   "devDependencies": {
