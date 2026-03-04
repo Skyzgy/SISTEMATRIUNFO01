@@ -1,8 +1,17 @@
 // public/js/auth-page.js
+
+// ✅ Base da API: em dev (localhost) usa o próprio Express local;
+// em produção (Vercel), aponta para o backend público no Render.
+const API_BASE =
+  location.hostname === 'localhost'
+    ? '' // desenvolvimento local: /api vai para o express local
+    : 'https://sistematriunfoo01.onrender.com'; // PRODUÇÃO: backend público (Render)
+
+// === Utilitários ===
 const el = (id) => document.getElementById(id);
 const qs = new URLSearchParams(location.search);
 
-// Helpers: gerar "e-mail virtual" a partir do nome
+// Helpers: gerar "e-mail virtual" a partir do nome (para não pedir e-mail)
 const FAKE_DOMAIN = "drivers.local";
 const slugifyName = (name) =>
   (name
@@ -12,9 +21,9 @@ const slugifyName = (name) =>
     .replace(/\s+/g,'.')) || `motorista.${Math.floor(Math.random()*1e6)}`;
 const nameToEmail = (name) => `${slugifyName(name)}@${FAKE_DOMAIN}`;
 
-// HTTP helper
+// HTTP helper central (sempre com credenciais para enviar cookie httpOnly)
 async function api(path, options = {}) {
-  const res = await fetch(path, {
+  const res = await fetch(`${API_BASE}${path}`, {
     credentials: 'include',
     headers: { 'Content-Type': 'application/json', ...(options.headers||{}) },
     ...options,
@@ -24,6 +33,7 @@ async function api(path, options = {}) {
   return data;
 }
 
+// Alternância de telas (cadastro/login)
 function setView(view) { // 'cadastro' | 'login'
   const isLogin = view === 'login';
   el('form-cadastro').classList.toggle('hidden', isLogin);
@@ -44,7 +54,7 @@ function setView(view) { // 'cadastro' | 'login'
   ['cad-erro','cad-ok','log-erro'].forEach(id => { const n=el(id); if(n){ n.style.display='none'; n.textContent=''; }});
 }
 
-// Alternar entre cadastro/login
+// Link de alternância & voltar
 el('toggleLink')?.addEventListener('click', (e)=>{
   e.preventDefault();
   const toLogin = !el('form-cadastro').classList.contains('hidden');
@@ -52,7 +62,7 @@ el('toggleLink')?.addEventListener('click', (e)=>{
 });
 el('btnVoltarCadastro')?.addEventListener('click', () => setView('cadastro'));
 
-// CADASTRO
+// === Cadastro ===
 el('form-cadastro')?.addEventListener('submit', async (e)=>{
   e.preventDefault();
   el('cad-erro').style.display='none'; el('cad-ok').style.display='none';
@@ -85,7 +95,7 @@ el('form-cadastro')?.addEventListener('submit', async (e)=>{
   }
 });
 
-// LOGIN
+// === Login ===
 el('form-login')?.addEventListener('submit', async (e)=>{
   e.preventDefault();
   el('log-erro').style.display='none';
@@ -106,6 +116,7 @@ el('form-login')?.addEventListener('submit', async (e)=>{
       method: 'POST',
       body: JSON.stringify({ email, password: senha })
     });
+    // Redireciona após login com sucesso
     window.location.href = "/";
   } catch (err) {
     el('log-erro').textContent = err.message || 'Erro no login.';
@@ -115,16 +126,16 @@ el('form-login')?.addEventListener('submit', async (e)=>{
   }
 });
 
-// ========= Sessão / Banner / Logout-forçado =========
+// === Sessão / banner ===
 (async () => {
   try {
     const { user } = await api('/api/auth/me', { method: 'GET' });
     if (user && qs.get('stay') !== '1') {
-      const nameOrEmail = user.name || user.email;
+      const nameOrEmail = user.name || user.email || '(sem identificação)';
       el('sessionInfo').textContent = `Você já está logado como ${nameOrEmail}.`;
       el('sessionBanner').style.display = 'flex';
 
-      el('forceLogout').addEventListener('click', async () => {
+      el('forceLogout')?.addEventListener('click', async () => {
         try { await api('/api/auth/logout', { method: 'POST' }); }
         catch(e) { console.warn(e); }
         el('sessionBanner').style.display = 'none';
@@ -132,7 +143,7 @@ el('form-login')?.addEventListener('submit', async (e)=>{
       });
     }
   } catch {
-    // não logado
+    // não logado; tudo normal
   }
 })();
 
