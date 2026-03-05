@@ -1,28 +1,17 @@
 {
   "name": "sistematriunfo",
   "version": "1.0.0",
-  "description": "Backend + Front (auth) Triunfo",
-  "type": "module",
+  "private": true,
+  "type": "commonjs",
   "scripts": {
-    "dev": "nodemon server/server.js",
-    "start": "node server/server.js"
-  },
-  "engines": {
-    "node": ">=18 <21",
-    "npm": ">=9"
+    "dev": "vercel dev",
+    "start": "vercel dev"
   },
   "dependencies": {
-    "bcryptjs": "^3.0.3",
-    "cookie-parser": "^1.4.7",
-    "cors": "^2.8.6",
-    "dotenv": "^16.4.5",
-    "express": "^5.2.1",
-    "helmet": "^8.1.0",
+    "bcryptjs": "^2.4.3",
+    "cookie": "^0.6.0",
     "jsonwebtoken": "^9.0.2",
-    "sqlite": "^4.2.1",
-    "sqlite3": "^5.1.7"
-  },
-  "devDependencies": {
-    "nodemon": "^3.1.14"
+    "pg": "^8.11.3",
+    "uuid": "^9.0.1"
   }
 }
