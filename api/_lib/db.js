@@ -2,16 +2,15 @@
 const { Pool } = require('pg');
 
 let pool;
-
 if (!global.pgPool) {
   global.pgPool = new Pool({
     connectionString: process.env.DATABASE_URL,
-    ssl: { rejectUnauthorized: false },
+    ssl: { rejectUnauthorized: false }
   });
 }
-
 pool = global.pgPool;
 
+// Cria as tabelas na primeira inicialização (cold start)
 const initSql = `
 CREATE TABLE IF NOT EXISTS users (
   id UUID PRIMARY KEY,
@@ -32,7 +31,9 @@ CREATE TABLE IF NOT EXISTS os (
 );
 `;
 
-pool.query(initSql).catch(err => console.error("Erro ao inicializar tabelas:", err));
+pool.query(initSql).catch((e) => {
+  console.error('Erro ao iniciar schema:', e);
+});
 
 module.exports = {
   query: (text, params) => pool.query(text, params)
