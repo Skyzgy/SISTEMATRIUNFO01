@@ -1,17 +1,24 @@
 {
   "name": "sistematriunfo",
   "version": "1.0.0",
-  "private": true,
-  "type": "commonjs",
+  "description": "Backend simples com auth (admin/driver) e armazenamento em JSON",
+  "main": "server/server.js",
   "scripts": {
-    "dev": "vercel dev",
-    "start": "vercel dev"
+    "dev": "nodemon server/server.js",
+    "start": "node server/server.js"
   },
+  "keywords": [],
+  "author": "",
+  "license": "MIT",
   "dependencies": {
-    "bcryptjs": "^2.4.3",
-    "cookie": "^0.6.0",
-    "jsonwebtoken": "^9.0.2",
-    "pg": "^8.11.3",
-    "uuid": "^9.0.1"
+    "bcryptjs": "2.4.3",
+    "cookie-parser": "1.4.6",
+    "cors": "2.8.5",
+    "dotenv": "16.4.5",
+    "express": "4.19.2",
+    "jsonwebtoken": "9.0.2"
+  },
+  "devDependencies": {
+    "nodemon": "3.0.2"
   }
 }
