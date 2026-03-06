@@ -6,53 +6,41 @@ const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const cookieParser = require("cookie-parser");
 const cors = require("cors");
-const dotenv = require("dotenv");
 
-dotenv.config();
+// ⚠️ Carrega .env APENAS fora de produção (no Railway NÃO carregar)
+// Isso impede que PORT=3000 do seu .env sobrescreva a porta dinâmica do Railway
+if (process.env.NODE_ENV !== "production") {
+  require("dotenv").config();
+}
 
 const app = express();
 
-// ⚠️ IMPORTANTE: NÃO fixe a porta em 3000 em produção. Railway injeta process.env.PORT.
-const PORT_FROM_ENV = process.env.PORT;           // fornecida pelo Railway
-const PORT = PORT_FROM_ENV || 3000;               // 3000 só local
+// Nunca fixe a porta em produção. Railway injeta process.env.PORT dinamicamente.
+const PORT = process.env.PORT || 3000;
 const JWT_SECRET = process.env.JWT_SECRET || "dev-secret";
 
 const PUBLIC_DIR = path.join(__dirname, "..", "public");
 const USERS_DB   = path.join(__dirname, "users.json");
 
 // ====== DB (arquivo JSON) ======
-function ensureUsersFile() {
-  if (!fs.existsSync(USERS_DB)) fs.writeFileSync(USERS_DB, "[]", "utf8");
-}
-function readUsers() {
-  ensureUsersFile();
-  return JSON.parse(fs.readFileSync(USERS_DB, "utf8") || "[]");
-}
-function writeUsers(users) {
-  fs.writeFileSync(USERS_DB, JSON.stringify(users, null, 2), "utf8");
-}
-function randomId() {
-  return "u_" + Math.random().toString(36).slice(2) + Date.now().toString(36);
-}
+function ensureUsersFile() { if (!fs.existsSync(USERS_DB)) fs.writeFileSync(USERS_DB, "[]", "utf8"); }
+function readUsers() { ensureUsersFile(); return JSON.parse(fs.readFileSync(USERS_DB, "utf8") || "[]"); }
+function writeUsers(users) { fs.writeFileSync(USERS_DB, JSON.stringify(users, null, 2), "utf8"); }
+function randomId() { return "u_" + Math.random().toString(36).slice(2) + Date.now().toString(36); }
 function findUserByName(firstName, lastName) {
   const users = readUsers();
-  return users.find(
-    (u) =>
-      u.firstName.toLowerCase() === String(firstName || "").toLowerCase() &&
-      u.lastName.toLowerCase() === String(lastName || "").toLowerCase()
+  return users.find(u =>
+    u.firstName.toLowerCase() === String(firstName || "").toLowerCase() &&
+    u.lastName.toLowerCase() === String(lastName  || "").toLowerCase()
   );
 }
-function isValidName(s) {
-  return typeof s === "string" && s.trim().length >= 2 && s.trim().length <= 60;
-}
-function isValidSixDigitPassword(pwd) {
-  return /^\d{6}$/.test(String(pwd));
-}
+function isValidName(s){ return typeof s==="string" && s.trim().length>=2 && s.trim().length<=60; }
+function isValidSixDigitPassword(pwd){ return /^\d{6}$/.test(String(pwd)); }
 
 // ====== Seed Admin ======
-(function seedAdmin() {
+(function seedAdmin(){
   const users = readUsers();
-  const hasAdmin = users.some((u) => u.role === "admin");
+  const hasAdmin = users.some(u => u.role === "admin");
   if (!hasAdmin) {
     const firstName = process.env.ADMIN_FIRST_NAME || "Admin";
     const lastName  = process.env.ADMIN_LAST_NAME  || "Master";
@@ -62,11 +50,10 @@ function isValidSixDigitPassword(pwd) {
     }
     users.push({
       id: randomId(),
-      firstName,
-      lastName,
+      firstName, lastName,
       passwordHash: bcrypt.hashSync(password, 10),
       role: "admin",
-      createdAt: new Date().toISOString(),
+      createdAt: new Date().toISOString()
     });
     writeUsers(users);
     console.log(`✅ Admin seed criado: ${firstName} ${lastName}`);
@@ -79,12 +66,11 @@ app.use(cookieParser());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// 🔎 Logger simples de requisições (ajuda no Railway)
+// Logger simples (ajuda a ver requests no Railway)
 app.use((req, res, next) => {
-  const start = Date.now();
+  const t0 = Date.now();
   res.on("finish", () => {
-    const ms = Date.now() - start;
-    console.log(`${req.method} ${req.url} -> ${res.statusCode} (${ms}ms)`);
+    console.log(`${req.method} ${req.url} -> ${res.statusCode} (${Date.now()-t0}ms)`);
   });
   next();
 });
@@ -100,7 +86,6 @@ function authRequired(req, res, next) {
     return res.status(401).json({ error: "Sessão inválida/expirada" });
   }
 }
-
 function roleRequired(...roles) {
   return (req, res, next) => {
     if (!req.user) return res.status(401).json({ error: "Não autenticado" });
@@ -115,6 +100,7 @@ app.get("/healthz", (req, res) => {
 });
 
 // ====== Rotas de API ======
+// Cadastro
 app.post("/api/auth/register", (req, res) => {
   const { firstName, lastName, password } = req.body;
   if (!isValidName(firstName) || !isValidName(lastName))
@@ -131,12 +117,13 @@ app.post("/api/auth/register", (req, res) => {
     lastName:  lastName.trim(),
     passwordHash: bcrypt.hashSync(password, 10),
     role: "driver",
-    createdAt: new Date().toISOString(),
+    createdAt: new Date().toISOString()
   });
   writeUsers(users);
   return res.status(201).json({ message: "Cadastro realizado com sucesso." });
 });
 
+// Login
 app.post("/api/auth/login", (req, res) => {
   const { firstName, lastName, password } = req.body;
   const user = findUserByName(firstName, lastName);
@@ -153,43 +140,43 @@ app.post("/api/auth/login", (req, res) => {
     httpOnly: true,
     sameSite: "lax",
     secure: process.env.NODE_ENV === "production",
-    maxAge: 1000 * 60 * 60 * 8,
+    maxAge: 1000 * 60 * 60 * 8
   });
   res.json({ message: "Login efetuado", role: user.role });
 });
 
+// Me
 app.get("/api/auth/me", authRequired, (req, res) => res.json({ user: req.user }));
-app.post("/api/auth/logout", (req, res) => { res.clearCookie("token"); res.json({ message: "Logout ok" }); });
 
-app.get("/api/os", authRequired, roleRequired("driver", "admin"), (req, res) => {
+// Logout
+app.post("/api/auth/logout", (req, res) => {
+  res.clearCookie("token");
+  res.json({ message: "Logout ok" });
+});
+
+// OS (driver e admin)
+app.get("/api/os", authRequired, roleRequired("driver","admin"), (req, res) => {
   res.json({
     module: "Abertura de OS",
     canOpen: true,
-    items: [
-      { id: "OS001", status: "aberta" },
-      { id: "OS002", status: "aberta" },
-    ],
+    items: [ { id:"OS001", status:"aberta" }, { id:"OS002", status:"aberta" } ]
   });
 });
 
+// Admin APIs (somente admin)
 app.get("/api/admin/users", authRequired, roleRequired("admin"), (req, res) => {
-  const users = readUsers().map((u) => ({
-    id: u.id,
-    firstName: u.firstName,
-    lastName: u.lastName,
-    role: u.role,
-    createdAt: u.createdAt,
+  const users = readUsers().map(u => ({
+    id: u.id, firstName: u.firstName, lastName: u.lastName, role: u.role, createdAt: u.createdAt
   }));
   res.json({ users });
 });
-
 app.post("/api/admin/users", authRequired, roleRequired("admin"), (req, res) => {
   const { firstName, lastName, password, role } = req.body;
   if (!isValidName(firstName) || !isValidName(lastName))
     return res.status(400).json({ error: "Nome/sobrenome inválidos." });
   if (!isValidSixDigitPassword(password))
     return res.status(400).json({ error: "Senha deve ter 6 dígitos numéricos." });
-  if (!["admin", "driver"].includes(role))
+  if (!["admin","driver"].includes(role))
     return res.status(400).json({ error: "Role inválida." });
   if (findUserByName(firstName, lastName))
     return res.status(409).json({ error: "Usuário já existe." });
@@ -201,27 +188,27 @@ app.post("/api/admin/users", authRequired, roleRequired("admin"), (req, res) => 
     lastName:  lastName.trim(),
     passwordHash: bcrypt.hashSync(password, 10),
     role,
-    createdAt: new Date().toISOString(),
+    createdAt: new Date().toISOString()
   });
   writeUsers(users);
   res.status(201).json({ message: "Usuário criado" });
 });
 
 // ====== Páginas (guarda de HTML) ======
-app.get(["/auth", "/auth.html"], (req, res) => {
-  res.sendFile(path.join(PUBLIC_DIR, "auth.html"));
+app.get(['/auth','/auth.html'], (req, res) => {
+  res.sendFile(path.join(PUBLIC_DIR, 'auth.html'));
 });
-
-app.get(["/", "/index", "/index.html"], authRequired, (req, res) => {
-  res.sendFile(path.join(PUBLIC_DIR, "index.html"));
+app.get(['/', '/index', '/index.html'], authRequired, (req, res) => {
+  res.sendFile(path.join(PUBLIC_DIR, 'index.html'));
 });
 
 // ====== Estáticos (CSS/JS/IMG) DEPOIS das rotas de página ======
 app.use(express.static(PUBLIC_DIR));
 
 // ====== Start ======
-app.listen(PORT, "0.0.0.0", () => {
+app.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 Server ouvindo em 0.0.0.0`);
-  console.log(`   • process.env.PORT = ${process.env.PORT || "(vazio)"}`);
-  console.log(`   • PORT efetiva     = ${PORT}`);
+  console.log(`   • NODE_ENV        = ${process.env.NODE_ENV || '(vazio)'}`);
+  console.log(`   • process.env.PORT= ${process.env.PORT || '(vazio)'}`);
+  console.log(`   • PORT efetiva    = ${PORT}`);
 });
