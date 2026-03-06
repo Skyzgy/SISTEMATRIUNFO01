@@ -5,10 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <meta name="color-scheme" content="light dark" />
   <title>Triunfo System - Gestão de Frota</title>
-  <link rel="stylesheet" href="style.css">
-
-  <!-- REMOVIDO: Supabase (não usamos mais) -->
-  <!-- Agora a validação de sessão/role é feita no final do body chamando /api/auth/me -->
+  <link rel="stylesheet" href="style.css" />
 </head>
 <body>
   <div class="app-container">
@@ -19,14 +16,21 @@
       </div>
 
       <div class="menu-items" role="menu">
-        <!-- Estes data-* são usados pelo seu script.js para navegação -->
-        <button class="active" data-nav-target="dashboard" aria-current="page" role="menuitem">📊 Dashboard</button>
+        <!-- Dashboard (ADMIN) -->
+        <button class="admin-only" data-nav-target="dashboard" role="menuitem">📊 Dashboard</button>
+
+        <!-- Visível para DRIVER e ADMIN -->
         <button data-open-modal="os" role="menuitem">📝 Abrir OS</button>
-        <button data-open-modal="req" role="menuitem">📦 Nova Requisição</button>
-        <button data-open-modal="abast" role="menuitem">⛽ Abastecimento</button>
-        <button data-nav-target="listagem-abast" role="menuitem">🧾 Histórico Abastecimentos</button>
-        <button role="menuitem">🚚 Motoristas</button>
-        <button role="menuitem">⚙️ Configurações</button>
+
+        <!-- NOVO: Minhas OS (driver vê histórico próprio) -->
+        <button data-nav-target="minhas-os" role="menuitem">📋 Minhas OS</button>
+
+        <!-- Somente ADMIN -->
+        <button class="admin-only" data-open-modal="req" role="menuitem">📦 Nova Requisição</button>
+        <button class="admin-only" data-open-modal="abast" role="menuitem">⛽ Abastecimento</button>
+        <button class="admin-only" data-nav-target="listagem-abast" role="menuitem">🧾 Histórico Abastecimentos</button>
+        <button class="admin-only" role="menuitem">🚚 Motoristas</button>
+        <button class="admin-only" role="menuitem">⚙️ Configurações</button>
       </div>
 
       <button class="btn-exit" type="button">Sair do Sistema</button>
@@ -34,10 +38,8 @@
 
     <!-- CONTEÚDO PRINCIPAL -->
     <main class="main-content" id="conteudo" tabindex="-1">
-      <!-- DASHBOARD -->
-      <section id="tela-dashboard" aria-labelledby="titulo-dashboard">
-        <!-- (REMOVIDO) Top bar de busca do dashboard -->
-
+      <!-- DASHBOARD (ADMIN) -->
+      <section id="tela-dashboard" class="admin-only" aria-labelledby="titulo-dashboard">
         <!-- STATUS OS -->
         <h1 id="titulo-dashboard" class="section-title">OS — STATUS</h1>
         <div class="status-grid" role="list">
@@ -71,9 +73,9 @@
           </article>
         </div>
 
-        <!-- STATUS REQUISIÇÕES -->
-        <h2 class="section-title">REQUISIÇÕES — STATUS</h2>
-        <div class="status-grid" role="list">
+        <!-- STATUS REQUISIÇÕES (ADMIN) -->
+        <h2 class="section-title admin-only">REQUISIÇÕES — STATUS</h2>
+        <div class="status-grid admin-only" role="list">
           <article class="status-card" role="listitem" aria-labelledby="lbl-req-aberta">
             <div class="status-card-head">
               <span id="lbl-req-aberta" class="status-label">Aberta</span>
@@ -110,13 +112,13 @@
           <section class="card-largo" aria-labelledby="ultimas-os-titulo">
             <div class="card-largo-header">
               <div id="ultimas-os-titulo" class="title-wrap"><span aria-hidden="true">📋</span> ÚLTIMAS OS</div>
-              <button class="link-ver-todas link-ver-todas--plain" type="button" data-nav-target="listagem-os">Ver todas</button>
+              <button class="link-ver-todas link-ver-todas--plain admin-only" type="button" data-nav-target="listagem-os">Ver todas</button>
             </div>
             <div id="lista-vazia" class="empty-state" aria-live="polite">Sem registros</div>
           </section>
 
-          <!-- ÚLTIMAS REQUISIÇÕES -->
-          <section class="card-largo" aria-labelledby="ultimas-req-titulo">
+          <!-- ÚLTIMAS REQUISIÇÕES (ADMIN) -->
+          <section class="card-largo admin-only" aria-labelledby="ultimas-req-titulo">
             <div class="card-largo-header">
               <div id="ultimas-req-titulo" class="title-wrap"><span aria-hidden="true">📦</span> ÚLTIMAS REQUISIÇÕES</div>
               <button class="link-ver-todas link-ver-todas--plain" type="button" data-nav-target="listagem-req">Ver todas</button>
@@ -126,8 +128,8 @@
         </div>
       </section>
 
-      <!-- LISTAGEM COMPLETA OS -->
-      <section id="tela-listagem-os" class="hidden" aria-labelledby="titulo-listagem-os">
+      <!-- LISTAGEM COMPLETA OS (ADMIN) -->
+      <section id="tela-listagem-os" class="hidden admin-only" aria-labelledby="titulo-listagem-os">
         <header class="top-bar">
           <form class="search-box" role="search" aria-label="Buscar OS">
             <label class="sr-only" for="busca-os">Buscar</label>
@@ -143,8 +145,8 @@
         <div class="card-largo" id="tabela-completa-os" role="region" aria-live="polite"></div>
       </section>
 
-      <!-- LISTAGEM COMPLETA REQ -->
-      <section id="tela-listagem-req" class="hidden" aria-labelledby="titulo-listagem-req">
+      <!-- LISTAGEM COMPLETA REQ (ADMIN) -->
+      <section id="tela-listagem-req" class="hidden admin-only" aria-labelledby="titulo-listagem-req">
         <header class="top-bar">
           <form class="search-box" role="search" aria-label="Buscar Requisições">
             <label class="sr-only" for="busca-req">Buscar</label>
@@ -160,8 +162,8 @@
         <div class="card-largo" id="tabela-completa-req" role="region" aria-live="polite"></div>
       </section>
 
-      <!-- LISTAGEM COMPLETA ABASTECIMENTO -->
-      <section id="tela-listagem-abast" class="hidden" aria-labelledby="titulo-listagem-abast">
+      <!-- LISTAGEM COMPLETA ABASTECIMENTO (ADMIN) -->
+      <section id="tela-listagem-abast" class="hidden admin-only" aria-labelledby="titulo-listagem-abast">
         <header class="top-bar">
           <form class="search-box" role="search" aria-label="Buscar Abastecimentos">
             <label class="sr-only" for="busca-abast">Buscar</label>
@@ -176,9 +178,20 @@
         </div>
         <div class="card-largo" id="tabela-completa-abast" role="region" aria-live="polite"></div>
       </section>
+
+      <!-- NOVO: MINHAS OS (DRIVER/ADMIN; driver verá apenas as próprias) -->
+      <section id="tela-minhas-os" class="hidden" aria-labelledby="titulo-minhas-os">
+        <header class="top-bar">
+          <h2 id="titulo-minhas-os" class="section-title">📋 Minhas OS</h2>
+          <button class="btn-filter admin-only" type="button" data-nav-target="dashboard">Voltar ao Dashboard</button>
+        </header>
+
+        <div class="card-largo" id="tabela-minhas-os" role="region" aria-live="polite">Carregando...</div>
+      </section>
     </main>
   </div>
 
+  <!-- MODAIS -->
   <!-- MODAL OS -->
   <div class="modal-overlay" id="modalOS" data-modal role="dialog" aria-modal="true" aria-labelledby="titulo-modal-os">
     <div class="modal-container" role="document">
@@ -228,8 +241,8 @@
     </div>
   </div>
 
-  <!-- MODAL REQUISIÇÃO -->
-  <div class="modal-overlay" id="modalRequisicao" data-modal role="dialog" aria-modal="true" aria-labelledby="titulo-modal-req">
+  <!-- MODAL REQUISIÇÃO (ADMIN) -->
+  <div class="modal-overlay admin-only" id="modalRequisicao" data-modal role="dialog" aria-modal="true" aria-labelledby="titulo-modal-req">
     <div class="modal-container modal--small" role="document">
       <div class="modal-header">
         <div class="modal-title">
@@ -289,8 +302,8 @@
     </div>
   </div>
 
-  <!-- MODAL ABASTECIMENTO -->
-  <div class="modal-overlay" id="modalAbastecimento" data-modal role="dialog" aria-modal="true" aria-labelledby="titulo-modal-abast">
+  <!-- MODAL ABASTECIMENTO (ADMIN) -->
+  <div class="modal-overlay admin-only" id="modalAbastecimento" data-modal role="dialog" aria-modal="true" aria-labelledby="titulo-modal-abast">
     <div class="modal-container" role="document">
       <div class="modal-header">
         <div class="modal-title">
@@ -341,57 +354,14 @@
     </div>
   </div>
 
-  <!-- Seu JS atual -->
+  <!-- SCRIPTS -->
+  <!-- (Se você tiver role-guard.js, pode manter aqui) -->
+  <!-- <script src="/js/role-guard.js"></script> -->
+
+  <!-- NOVO: comportamento para "Minhas OS" (driver) -->
+  <script src="/js/minhas-os.js"></script>
+
+  <!-- Seu JS principal (permanece) -->
   <script src="script.js"></script>
-
-  <!-- ✅ Guarda de sessão + regras de UI + Logout (usando seu back-end) -->
-  <script>
-    (function () {
-      // Helper de API com cookie
-      async function api(path, options = {}) {
-        const res = await fetch(path, {
-          headers: { 'Content-Type': 'application/json' },
-          credentials: 'include',
-          ...options
-        });
-        let data = {};
-        try { data = await res.json(); } catch {}
-        if (!res.ok) throw new Error(data?.error || ('Erro HTTP ' + res.status));
-        return data;
-      }
-
-      // Executa após DOM pronto (não interfere no seu script.js)
-      window.addEventListener('DOMContentLoaded', async () => {
-        // 1) Exigir login: se não tiver sessão, mandar para /auth
-        try {
-          const { user } = await api('/api/auth/me'); // { user: { role: 'admin'|'driver', ... } }
-          // 2) Regras de UI: SE for driver, remover itens como você já fazia antes
-          if (user?.role === 'driver') {
-            document.querySelector('[data-nav-target="dashboard"]')?.remove();          // Dashboard
-            document.querySelector('[data-open-modal="req"]')?.remove();                // Nova Requisição
-            document.querySelector('[data-open-modal="abast"]')?.remove();              // Abastecimento (modal)
-            document.querySelector('[data-nav-target="listagem-abast"]')?.remove();     // Histórico Abastecimentos
-            // (Se tiver tela de listagem de REQ completa, esconda:)
-            // document.querySelector('[data-nav-target="listagem-req"]')?.remove();
-          }
-        } catch (err) {
-          // Sem sessão -> tela de login/cadastro
-          window.location.href = '/auth';
-          return;
-        }
-
-        // 3) Botão SAIR: encerra sessão no back e volta para /auth
-        const btnExit = document.querySelector('.btn-exit');
-        if (btnExit) {
-          btnExit.addEventListener('click', async () => {
-            try {
-              await api('/api/auth/logout', { method: 'POST' });
-            } catch {}
-            window.location.href = '/auth';
-          });
-        }
-      });
-    })();
-  </script>
 </body>
 </html>

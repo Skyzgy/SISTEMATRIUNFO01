@@ -114,6 +114,7 @@ app.post("/api/auth/register", (req, res) => {
     return res.status(400).json({ error: "Nome e sobrenome devem ter de 2 a 60 caracteres." });
   if (!isValidSixDigitPassword(password))
     return res.status(400).json({ error: "A senha deve ter exatamente 6 dígitos numéricos." });
+
   const users = readUsers();
   if (users.find(u => u.firstName.toLowerCase()===firstName.toLowerCase() && u.lastName.toLowerCase()===lastName.toLowerCase()))
     return res.status(409).json({ error: "Usuário já cadastrado." });
@@ -155,12 +156,6 @@ app.post("/api/auth/logout", (req, res) => { res.clearCookie("token"); res.json(
 // ============================================================
 // ===================  MÓDULO: OS  ===========================
 // ============================================================
-/**
- * Modelo de OS (armazenado em os.json):
- * { id, garagem, motorista, frota, km, tipoServico, descricao, status, createdBy, createdAt, updatedAt }
- * status: 'aberta' | 'andamento' | 'aguardando' | 'concluida'
- */
-
 // Criar OS (driver e admin)
 app.post("/api/os", authRequired, roleRequired("driver","admin"), (req, res) => {
   const { garagem, motorista, frota, km, tipoServico, descricao } = req.body;
@@ -182,15 +177,28 @@ app.post("/api/os", authRequired, roleRequired("driver","admin"), (req, res) => 
   res.status(201).json({ message: "OS criada", os: item });
 });
 
-// Listar OS (com filtros simples)
+// ✅ Listar OS (com filtros) — driver vê só as dele; admin vê tudo (ou as próprias passando ?mine=1)
 app.get("/api/os", authRequired, roleRequired("driver","admin"), (req, res) => {
-  const { status, frota, limit=50, page=1 } = req.query;
+  const { status, frota, limit = 50, page = 1, mine } = req.query;
   let rows = readJson(OS_DB);
+
+  if (req.user.role === "driver") {
+    rows = rows.filter(r => r.createdBy === req.user.id);
+  } else {
+    if (String(mine) === "1" || String(mine).toLowerCase() === "true") {
+      rows = rows.filter(r => r.createdBy === req.user.id);
+    }
+  }
+
   if (status) rows = rows.filter(r => r.status === status);
   if (frota)  rows = rows.filter(r => r.frota === String(frota));
-  const p = Math.max(1, Number(page)); const l = Math.max(1, Math.min(1000, Number(limit)));
-  const start = (p-1)*l; const end = start + l;
-  res.json({ total: rows.length, page:p, pageSize:l, items: rows.slice(start,end) });
+
+  const p = Math.max(1, Number(page));
+  const l = Math.max(1, Math.min(1000, Number(limit)));
+  const start = (p - 1) * l;
+  const end   = start + l;
+
+  res.json({ total: rows.length, page: p, pageSize: l, items: rows.slice(start, end) });
 });
 
 // Alterar status da OS (admin)
@@ -224,13 +232,6 @@ app.get("/api/os/recent", authRequired, roleRequired("driver","admin"), (req, re
 // ============================================================
 // =================  MÓDULO: REQUISIÇÃO  =====================
 // ============================================================
-/**
- * Modelo de REQ (armazenado em req.json):
- * { id, material, quantidade, garagem, frota, solicitante, data, codigo, descricao, status, createdBy, createdAt, updatedAt }
- * status: 'aberta' | 'andamento' | 'aguardando' | 'concluida'
- */
-
-// Criar Requisição (somente admin)
 app.post("/api/req", authRequired, roleRequired("admin"), (req, res) => {
   const { material, quantidade, garagem, frota, solicitante, data, codigo, descricao } = req.body;
   const reqs = readJson(REQ_DB);
@@ -253,7 +254,6 @@ app.post("/api/req", authRequired, roleRequired("admin"), (req, res) => {
   res.status(201).json({ message: "Requisição criada", req: item });
 });
 
-// Listar Requisição + filtros
 app.get("/api/req", authRequired, roleRequired("admin"), (req, res) => {
   const { status, frota, material, limit=50, page=1 } = req.query;
   let rows = readJson(REQ_DB);
@@ -265,7 +265,6 @@ app.get("/api/req", authRequired, roleRequired("admin"), (req, res) => {
   res.json({ total: rows.length, page:p, pageSize:l, items: rows.slice(start,end) });
 });
 
-// Atualizar status (admin)
 app.patch("/api/req/:id/status", authRequired, roleRequired("admin"), (req, res) => {
   const { id } = req.params; const { status } = req.body;
   const allowed = ["aberta","andamento","aguardando","concluida"];
@@ -278,7 +277,6 @@ app.patch("/api/req/:id/status", authRequired, roleRequired("admin"), (req, res)
   res.json({ message: "Status atualizado", req: rows[i] });
 });
 
-// Métricas de Requisição
 app.get("/api/req/metrics", authRequired, roleRequired("admin"), (req, res) => {
   const rows = readJson(REQ_DB);
   const counts = { aberta:0, andamento:0, aguardando:0, concluida:0 };
@@ -286,7 +284,6 @@ app.get("/api/req/metrics", authRequired, roleRequired("admin"), (req, res) => {
   res.json({ counts, total: rows.length });
 });
 
-// Últimas Requisições
 app.get("/api/req/recent", authRequired, roleRequired("admin"), (req, res) => {
   const limit = Math.max(1, Math.min(50, Number(req.query.limit || 10)));
   const rows = readJson(REQ_DB).sort((a,b)=> b.createdAt.localeCompare(a.createdAt)).slice(0, limit);
@@ -296,12 +293,6 @@ app.get("/api/req/recent", authRequired, roleRequired("admin"), (req, res) => {
 // ============================================================
 // =================  MÓDULO: ABASTECIMENTO  ==================
 // ============================================================
-/**
- * Modelo de ABAST (armazenado em abast.json):
- * { id, dataHora, frota, kmVeiculo, kmInicioBomba, kmFimBomba, litros, createdBy, createdAt }
- */
-
-// Criar Abastecimento (somente admin)
 app.post("/api/abast", authRequired, roleRequired("admin"), (req, res) => {
   const { dataHora, frota, kmVeiculo, kmInicioBomba, kmFimBomba, litros } = req.body;
   const rows = readJson(ABAST_DB);
@@ -320,7 +311,6 @@ app.post("/api/abast", authRequired, roleRequired("admin"), (req, res) => {
   res.status(201).json({ message: "Abastecimento registrado", abast: item });
 });
 
-// Listar Abastecimentos + filtros
 app.get("/api/abast", authRequired, roleRequired("admin"), (req, res) => {
   const { frota, limit=50, page=1 } = req.query;
   let rows = readJson(ABAST_DB);
@@ -330,7 +320,6 @@ app.get("/api/abast", authRequired, roleRequired("admin"), (req, res) => {
   res.json({ total: rows.length, page:p, pageSize:l, items: rows.slice(start,end) });
 });
 
-// Métricas de Abastecimento (ex.: total de registros e total de litros)
 app.get("/api/abast/metrics", authRequired, roleRequired("admin"), (req, res) => {
   const rows = readJson(ABAST_DB);
   const totalReg = rows.length;
@@ -338,7 +327,6 @@ app.get("/api/abast/metrics", authRequired, roleRequired("admin"), (req, res) =>
   res.json({ totalReg, totalLitros });
 });
 
-// Últimos Abastecimentos
 app.get("/api/abast/recent", authRequired, roleRequired("admin"), (req, res) => {
   const limit = Math.max(1, Math.min(50, Number(req.query.limit || 10)));
   const rows = readJson(ABAST_DB).sort((a,b)=> b.createdAt.localeCompare(a.createdAt)).slice(0, limit);
@@ -349,13 +337,11 @@ app.get("/api/abast/recent", authRequired, roleRequired("admin"), (req, res) => 
 // =================  DASHBOARD: RESUMO GERAL  ================
 // ============================================================
 app.get("/api/dashboard/summary", authRequired, roleRequired("driver","admin"), (req, res) => {
-  // OS
   const osRows = readJson(OS_DB);
   const osCounts = { aberta:0, andamento:0, aguardando:0, concluida:0 };
   osRows.forEach(r => { osCounts[r.status] = (osCounts[r.status]||0)+1; });
   const osRecent = osRows.sort((a,b)=> b.createdAt.localeCompare(a.createdAt)).slice(0, 10);
 
-  // REQ (se usuário for driver, não retorna detalhes)
   let reqCounts = null, reqRecent = null;
   if (req.user.role === "admin") {
     const reqRows = readJson(REQ_DB);
@@ -364,7 +350,6 @@ app.get("/api/dashboard/summary", authRequired, roleRequired("driver","admin"), 
     reqRecent = reqRows.sort((a,b)=> b.createdAt.localeCompare(a.createdAt)).slice(0, 10);
   }
 
-  // ABAST (métricas simples para dashboard)
   let abast = null;
   if (req.user.role === "admin") {
     const abRows = readJson(ABAST_DB);

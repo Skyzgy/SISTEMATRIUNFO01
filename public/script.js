@@ -1,19 +1,15 @@
 /* =========================================================
    Triunfo System - Gestão de Frota
-   script.js (COMPLETO e ALINHADO ao HTML/CSS atuais)
+   script.js (COMPLETO e CONSOLIDADO)
    - Catálogos (garagens, motoristas, veículos)
-   - Storage (localStorage)
+   - Persistência LOCAL (somente para as tabelas “ver todos” – mantida do seu código)
    - Constantes de status
-   - Utilitários (datas, escape, seleção, show/hide)
-   - Inicialização (migração, selects, dashboard)
-   - Eventos via data-* (sem onclick inline)
-   - Modais (OS, Requisição, Abastecimento) com foco/ESC
-   - Navegação entre telas (SPA leve)
-   - Formulários: salvar OS/REQ/Abastecimento (validações)
-   - Dashboard + listas compactas (Sem “Últimos Abastecimentos”)
-   - Tabelas completas + Ações (status, concluir, remover)
-   - Busca somente nas telas “Ver todos” (OS/REQ/Abast)
-   - Exposição no window (compatibilidade)
+   - Utilitários
+   - Modais (OS / Requisição / Abastecimento)
+   - Navegação (SPA leve)
+   - Dash + listas compactas (agora via API /summary)
+   - Event wiring (SEM duplicações)
+   - API helpers (API_URL, api, loadDashboard)
    ========================================================= */
 
 "use strict";
@@ -72,7 +68,8 @@ const solicitantesPorGaragem = {
 };
 
 /* =========================
-   Persistência (localStorage)
+   Persistência (localStorage) – Mantida
+   (Usada apenas para as Tabelas "Ver todos" antigas)
 ========================= */
 const STORAGE_KEYS = { OS: "triunfo_os", REQ: "triunfo_req", ABAST: "triunfo_abast" };
 let ordensServico   = carregarLista(STORAGE_KEYS.OS);
@@ -80,7 +77,7 @@ let requisicoes     = carregarLista(STORAGE_KEYS.REQ);
 let abastecimentos  = carregarLista(STORAGE_KEYS.ABAST);
 
 /* =========================
-   Status padronizados
+   Status padronizados (legado)
 ========================= */
 const STATUS = ["ABERTA", "EM ANDAMENTO", "AGUARDANDO", "CONCLUÍDA"];
 
@@ -104,14 +101,14 @@ function toISODateString(d = new Date()) {
   const dd = String(d.getDate()).padStart(2, "0");
   const mm = String(d.getMonth() + 1).padStart(2, "0");
   const yy = d.getFullYear();
-  return `${yy}-${mm}-${dd}`; // YYYY-MM-DD (para <input type="date">)
+  return `${yy}-${mm}-${dd}`; // YYYY-MM-DD (para <input type="date">
 }
 function ISOparaBR(isoStr) {
   if (!isoStr || !/^\d{4}-\d{2}-\d{2}$/.test(isoStr)) return "";
   const [y, m, d] = isoStr.split("-");
   return `${d}/${m}/${y}`;
 }
-// Escape SEGURO para evitar XSS ao usar innerHTML
+// Escape seguro
 function escapeHTML(str) {
   return String(str)
     .replace(/&/g, "&amp;")
@@ -136,30 +133,20 @@ function setText(id, val) {
   const el = document.getElementById(id);
   if (el) el.textContent = String(val ?? 0);
 }
-// Mostrar/ocultar (usa .hidden e também fallback por style.display)
-function hideEl(el) {
-  if (!el) return;
-  if (el.classList) el.classList.add('hidden');
-  if (el.style)     el.style.display = 'none';
-}
-function showEl(el) {
-  if (!el) return;
-  if (el.classList) el.classList.remove('hidden');
-  if (el.style)     el.style.display = 'block';
-}
-// Combina todas as frotas (todas as garagens) em um único array útil para selects
+// Mostrar/ocultar
+function hideEl(el) { if (el){ el.classList?.add('hidden'); el.style && (el.style.display='none'); } }
+function showEl(el) { if (el){ el.classList?.remove('hidden'); el.style && (el.style.display='block'); } }
+// Frotas combinadas (para selects)
 function obterFrotasCombinadas() {
   const out = [];
   Object.entries(bancoDeDados.veiculos || {}).forEach(([garagem, lista]) => {
-    (lista || []).forEach(v => {
-      out.push({ garagem, prefixo: v.prefixo, placa: v.placa, modelo: v.modelo });
-    });
+    (lista || []).forEach(v => { out.push({ garagem, prefixo: v.prefixo, placa: v.placa, modelo: v.modelo }); });
   });
   return out;
 }
 
 /* =========================
-   Variáveis de suporte (foco em modais)
+   Suporte (foco em modais)
 ========================= */
 let ultimoFoco = null;
 
@@ -226,7 +213,6 @@ function abrirModalRequisicao() {
   if (desc)     desc.value = "";
   if (data && !data.value) data.value = toISODateString(new Date());
 
-  // Foco
   ultimoFoco = document.activeElement;
   setTimeout(() => material?.focus(), 0);
 }
@@ -266,7 +252,6 @@ function abrirModalAbastecimento() {
   if (kmF) kmF.value = "";
   if (qtd) qtd.value = "";
 
-  // Foco
   ultimoFoco = document.activeElement;
   setTimeout(() => dt?.focus(), 0);
 }
@@ -303,11 +288,8 @@ function trapFocus(modalEl, e) {
    Navegação entre telas (SPA leve)
 ========================= */
 function alternarTelas(tela) {
-  const ids = ["dashboard", "listagem-os", "listagem-req", "listagem-abast"];
-  ids.forEach(id => {
-    const el = document.getElementById(`tela-${id}`);
-    hideEl(el);
-  });
+  const ids = ["dashboard", "listagem-os", "listagem-req", "listagem-abast", "minhas-os"];
+  ids.forEach(id => hideEl(document.getElementById(`tela-${id}`)));
 
   const destino = document.getElementById(`tela-${tela}`);
   showEl(destino);
@@ -318,12 +300,11 @@ function alternarTelas(tela) {
   if (btnAtivo) btnAtivo.classList.add("active");
   else if (tela === "dashboard") document.querySelector(".menu-items button")?.classList.add("active");
 
-  // Render específicos ao entrar na tela
+  // Render específicos ao entrar na tela (legado – localStorage)
   if (tela === "listagem-os")    renderizarTabelaOSCompleta();
   if (tela === "listagem-req")   renderizarTabelaREQCompleta();
   if (tela === "listagem-abast") renderizarTabelaAbastecimentoCompleta();
 
-  // Foco de acessibilidade
   document.getElementById("conteudo")?.focus({ preventScroll: true });
 }
 
@@ -416,9 +397,9 @@ function atualizarCamposReqPorGaragem() {
 }
 
 /* =========================
-   Salvar OS (validações)
+   Salvar OS (agora via API)
 ========================= */
-function salvarOS() {
+async function salvarOS() {
   const garagem   = document.getElementById("selectGaragem").value;
   const motorista = document.getElementById("selectMotorista").value;
   const frota     = document.getElementById("selectFrota").value;
@@ -428,7 +409,6 @@ function salvarOS() {
 
   const erros = [];
   if (!garagem) erros.push("Selecione a garagem.");
-  if (!motorista) erros.push("Selecione o motorista.");
   if (!frota) erros.push("Selecione a frota.");
   if (km === "" || Number.isNaN(Number(km)) || Number(km) < 0) erros.push("Informe um KM válido (>= 0).");
   if (!servico) erros.push("Selecione o tipo de serviço.");
@@ -436,55 +416,49 @@ function salvarOS() {
 
   if (erros.length) {
     alert("Verifique os campos:\n- " + erros.join("\n- "));
-    // Foco no primeiro campo inválido
-    const ordem = ["selectGaragem","selectMotorista","selectFrota","inputKM","selectTipoServico","textoDescricao"];
-    for (const id of ordem) {
-      const el = document.getElementById(id);
-      if (id === "inputKM") {
-        if (km === "" || Number.isNaN(Number(km)) || Number(km) < 0) { el?.focus(); break; }
-      } else if (!el?.value) { el?.focus(); break; }
-    }
     return;
   }
 
-  const id = gerarId("OS");
-  const now = new Date();
-  const registro = {
-    id,
-    data: now.toISOString(),
-    dataBR: formatarDataBR(now),
-    garagem, motorista, frota,
-    km: Number(km),
-    servico, descricao,
-    status: "ABERTA"
-  };
+  const btn = document.querySelector('[data-submit-os]');
+  const prev = btn?.textContent;
+  if (btn) { btn.disabled = true; btn.textContent = 'Enviando...'; }
 
-  ordensServico.unshift(registro);
-  salvarLista(STORAGE_KEYS.OS, ordensServico);
+  try {
+    await api('/api/os', {
+      method: 'POST',
+      body: JSON.stringify({ garagem, motorista, frota, km, tipoServico: servico, descricao })
+    });
 
-  fecharModal();
-  atualizarDashboard();
-  alert(`OS ${id} aberta com sucesso!`);
+    fecharModal();
+    if (typeof loadDashboard === 'function') await loadDashboard();
+    if (typeof loadMyOsHistory === 'function') {
+      const sec = document.getElementById('tela-minhas-os');
+      if (sec && !sec.classList.contains('hidden')) await loadMyOsHistory();
+    }
+    alert(`OS criada com sucesso!`);
+  } catch (err) {
+    alert('Erro ao abrir OS: ' + err.message);
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = prev; }
+  }
 }
 
 /* =========================
-   Salvar Requisição (validações)
+   Salvar Requisição (via API – admin)
 ========================= */
-function salvarRequisicao() {
+async function salvarRequisicao() {
   const material     = document.getElementById("inputMaterial").value.trim();
-  const quantidadeEl = document.getElementById("inputQuantidade");
-  const quantidade   = quantidadeEl ? quantidadeEl.value.trim() : "";
+  const quantidade   = document.getElementById("inputQuantidade")?.value.trim() || "";
   const garagem      = document.getElementById("selectGaragemReq").value;
   const frota        = document.getElementById("selectFrotaReq").value;
   const solicitante  = document.getElementById("selectSolicitanteReq").value;
   const dataISO      = document.getElementById("inputDataReq").value;
-  const dataBR       = ISOparaBR(dataISO) || formatarDataBR();
   const codigo       = document.getElementById("inputCodigoReq").value.trim();
   const descricao    = document.getElementById("textoDescricaoReq").value.trim();
 
   const erros = [];
   if (!material) erros.push("Informe o material.");
-  if (!quantidade || Number(quantidade) <= 0) erros.push("Informe a quantidade (número > 0).");
+  if (!quantidade || Number(quantidade) <= 0) erros.push("Informe a quantidade (> 0).");
   if (!garagem) erros.push("Selecione a garagem.");
   if (!frota) erros.push("Selecione a frota.");
   if (!solicitante) erros.push("Selecione o solicitante.");
@@ -492,39 +466,41 @@ function salvarRequisicao() {
   if (!codigo) erros.push("Informe o código.");
   if (!descricao) erros.push("Informe a descrição.");
 
-  if (erros.length) {
-    alert("Verifique os campos:\n- " + erros.join("\n- "));
-    const ordem = ["inputMaterial","inputQuantidade","selectGaragemReq","selectFrotaReq","selectSolicitanteReq","inputDataReq","inputCodigoReq","textoDescricaoReq"];
-    for (const id of ordem) {
-      const el = document.getElementById(id);
-      if (!el) continue;
-      if (id === "inputQuantidade") {
-        if (!quantidade || Number(quantidade) <= 0) { el.focus(); break; }
-      } else if (!el.value) { el.focus(); break; }
-    }
-    return;
+  if (erros.length) { alert("Verifique os campos:\n- " + erros.join("\n- ")); return; }
+
+  const btn = document.querySelector('[data-submit-req]');
+  const prev = btn?.textContent;
+  if (btn) { btn.disabled = true; btn.textContent = 'Enviando...'; }
+
+  try {
+    await api('/api/req', {
+      method: 'POST',
+      body: JSON.stringify({
+        material,
+        quantidade: Number(quantidade),
+        garagem,
+        frota,
+        solicitante,
+        data: dataISO,
+        codigo,
+        descricao
+      })
+    });
+
+    fecharModalRequisicao();
+    if (typeof loadDashboard === 'function') await loadDashboard();
+    alert('Requisição criada com sucesso!');
+  } catch (err) {
+    alert('Erro ao criar Requisição: ' + err.message);
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = prev; }
   }
-
-  const id = gerarId("REQ");
-  const registro = {
-    id, dataBR, material,
-    quantidade: Number(quantidade),
-    garagem, frota, solicitante, codigo, descricao,
-    status: "ABERTA"
-  };
-
-  requisicoes.unshift(registro);
-  salvarLista(STORAGE_KEYS.REQ, requisicoes);
-
-  fecharModalRequisicao();
-  atualizarDashboard();
-  alert(`Requisição ${id} registrada!`);
 }
 
 /* =========================
-   Salvar Abastecimento (validações)
+   Salvar Abastecimento (via API – admin)
 ========================= */
-function salvarAbastecimento() {
+async function salvarAbastecimento() {
   const dataHoraISO = document.getElementById("inputDataHoraAbast").value; // yyyy-mm-ddThh:mm
   const frota       = document.getElementById("selectFrotaAbast").value;
   const kmVeiculo   = document.getElementById("inputKMVeiculoAbast").value.trim();
@@ -539,81 +515,53 @@ function salvarAbastecimento() {
   const nIni = Number(kmIni); const nFim = Number(kmFim);
   if (kmIni === "" || nIni < 0) erros.push("Informe o KM inicial da bomba (>= 0).");
   if (kmFim === "" || nFim < 0) erros.push("Informe o KM final da bomba (>= 0).");
-  if (!Number.isNaN(nIni) && !Number.isNaN(nFim) && nFim < nIni) erros.push("KM final da bomba deve ser maior ou igual ao inicial.");
+  if (!Number.isNaN(nIni) && !Number.isNaN(nFim) && nFim < nIni) erros.push("KM final da bomba deve ser >= KM inicial.");
   if (!quantidade || Number(quantidade) <= 0) erros.push("Informe a quantidade (litros > 0).");
 
-  if (erros.length) {
-    alert("Verifique os campos:\n- " + erros.join("\n- "));
-    const ordem = ["inputDataHoraAbast","selectFrotaAbast","inputKMVeiculoAbast","inputKMInicioBomba","inputKMFimBomba","inputQuantidadeLitros"];
-    for (const id of ordem) {
-      const el = document.getElementById(id);
-      if (!el) continue;
-      if (id === "inputKMFimBomba" && (!kmFim || Number(kmFim) < Number(kmIni))) { el.focus(); break; }
-      if (id === "inputQuantidadeLitros" && (!quantidade || Number(quantidade) <= 0)) { el.focus(); break; }
-      if (!el.value) { el.focus(); break; }
-    }
-    return;
+  if (erros.length) { alert("Verifique os campos:\n- " + erros.join("\n- ")); return; }
+
+  const btn = document.querySelector('[data-submit-abast]');
+  const prev = btn?.textContent;
+  if (btn) { btn.disabled = true; btn.textContent = 'Enviando...'; }
+
+  try {
+    await api('/api/abast', {
+      method: 'POST',
+      body: JSON.stringify({
+        dataHora: dataHoraISO,
+        frota,
+        kmVeiculo: Number(kmVeiculo),
+        kmInicioBomba: Number(kmIni),
+        kmFimBomba: Number(kmFim),
+        litros: Number(quantidade)
+      })
+    });
+
+    fecharModalAbastecimento();
+    if (typeof loadDashboard === 'function') await loadDashboard();
+    alert(`Abastecimento registrado!`);
+  } catch (err) {
+    alert('Erro ao registrar Abastecimento: ' + err.message);
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = prev; }
   }
-
-  // Buscar placa/garagem do prefixo (para exibir nas listas)
-  const frotas = obterFrotasCombinadas();
-  const meta = frotas.find(f => f.prefixo === frota) || {};
-
-  // Monta registro
-  const id = gerarId("ABAST");
-  const dataObj = new Date(dataHoraISO);
-  const dd = String(dataObj.getDate()).padStart(2,"0");
-  const mm = String(dataObj.getMonth()+1).padStart(2,"0");
-  const yy = dataObj.getFullYear();
-  const hh = String(dataObj.getHours()).padStart(2,"0");
-  const mi = String(dataObj.getMinutes()).padStart(2,"0");
-  const dataBR = `${dd}/${mm}/${yy} ${hh}:${mi}`;
-
-  const registro = {
-    id,
-    dataISO: dataObj.toISOString(),
-    dataBR,
-    frota,
-    placa: meta.placa || "",
-    garagem: meta.garagem || "",
-    kmVeiculo: Number(kmVeiculo),
-    kmBombaIni: Number(kmIni),
-    kmBombaFim: Number(kmFim),
-    quantidade: Number(quantidade)
-  };
-
-  abastecimentos.unshift(registro);
-  salvarLista(STORAGE_KEYS.ABAST, abastecimentos);
-
-  fecharModalAbastecimento();
-  atualizarDashboard();
-  alert(`Abastecimento ${id} registrado!`);
 }
 
 /* =========================
-   Dashboard + Listas compactas
-   (Sem "Últimos Abastecimentos")
+   Dashboard + Listas compactas (AGORA via API)
 ========================= */
-function atualizarDashboard() {
-  // OS
-  const cOS = contarPorStatus(ordensServico);
-  setText("os-count-aberta", cOS["ABERTA"]);
-  setText("os-count-em-andamento", cOS["EM ANDAMENTO"]);
-  setText("os-count-aguardando", cOS["AGUARDANDO"]);
-  setText("os-count-concluida", cOS["CONCLUÍDA"]);
-
-  // Requisições
-  const cRQ = contarPorStatus(requisicoes);
-  setText("req-count-aberta", cRQ["ABERTA"]);
-  setText("req-count-em-andamento", cRQ["EM ANDAMENTO"]);
-  setText("req-count-aguardando", cRQ["AGUARDANDO"]);
-  setText("req-count-concluida", cRQ["CONCLUÍDA"]);
-
-  // Últimas listas (somente OS e REQ)
-  renderUltimasOS(document.getElementById("lista-vazia"), ordensServico);
-  renderUltimasREQ(document.getElementById("lista-requisicoes"), requisicoes);
+async function atualizarDashboard() {
+  try {
+    if (typeof loadDashboard === 'function') {
+      await loadDashboard();
+    }
+  } catch (e) {
+    console.warn('[atualizarDashboard] aviso:', e?.message || e);
+  }
 }
 
+// (Abaixo, as funções de "últimas" para o layout legado foram mantidas,
+// mas o preenchimento da home agora é feito por loadDashboard() via API.)
 function renderUltimasOS(container, dados) {
   if (!container) return;
   container.innerHTML = "";
@@ -674,7 +622,7 @@ function renderUltimasREQ(container, dados) {
 }
 
 /* =========================
-   Tabelas completas
+   Tabelas completas (LEGADO – localStorage)
 ========================= */
 function renderizarTabelaOSCompleta() {
   const wrap = document.getElementById("tabela-completa-os");
@@ -812,7 +760,7 @@ function renderizarTabelaAbastecimentoCompleta() {
 }
 
 /* =========================
-   Ações (status / concluir / remover)
+   Ações (LEGADO – localStorage) – Mantidas p/ tabelas antigas
 ========================= */
 function alterarStatusOS(id, novo, indexFallback = -1) {
   let idx = ordensServico.findIndex(x => x.id === id);
@@ -825,19 +773,14 @@ function alterarStatusOS(id, novo, indexFallback = -1) {
   renderizarTabelaOSCompleta();
   atualizarDashboard();
 }
-function concluirOS(id, indexFallback = -1) {
-  alterarStatusOS(id, "CONCLUÍDA", indexFallback);
-}
+function concluirOS(id, indexFallback = -1) { alterarStatusOS(id, "CONCLUÍDA", indexFallback); }
 function removerOS(id, indexFallback = -1) {
   let idx = ordensServico.findIndex(x => x.id === id);
   if (idx < 0) idx = indexFallback;
   if (idx < 0 || !ordensServico[idx]) return;
-
   if (!confirm(`Remover ${ordensServico[idx].id}? Esta ação não pode ser desfeita.`)) return;
-
   ordensServico.splice(idx, 1);
   salvarLista(STORAGE_KEYS.OS, ordensServico);
-
   renderizarTabelaOSCompleta();
   atualizarDashboard();
 }
@@ -853,19 +796,14 @@ function alterarStatusREQ(id, novo, indexFallback = -1) {
   renderizarTabelaREQCompleta();
   atualizarDashboard();
 }
-function concluirREQ(id, indexFallback = -1) {
-  alterarStatusREQ(id, "CONCLUÍDA", indexFallback);
-}
+function concluirREQ(id, indexFallback = -1) { alterarStatusREQ(id, "CONCLUÍDA", indexFallback); }
 function removerREQ(id, indexFallback = -1) {
   let idx = requisicoes.findIndex(x => x.id === id);
   if (idx < 0) idx = indexFallback;
   if (idx < 0 || !requisicoes[idx]) return;
-
   if (!confirm(`Remover ${requisicoes[idx].id}? Esta ação não pode ser desfeita.`)) return;
-
   requisicoes.splice(idx, 1);
   salvarLista(STORAGE_KEYS.REQ, requisicoes);
-
   renderizarTabelaREQCompleta();
   atualizarDashboard();
 }
@@ -874,22 +812,17 @@ function removerAbastecimento(id, indexFallback = -1) {
   let idx = abastecimentos.findIndex(x => x.id === id);
   if (idx < 0) idx = indexFallback;
   if (idx < 0 || !abastecimentos[idx]) return;
-
   if (!confirm(`Remover ${abastecimentos[idx].id}? Esta ação não pode ser desfeita.`)) return;
-
   abastecimentos.splice(idx, 1);
   salvarLista(STORAGE_KEYS.ABAST, abastecimentos);
-
   renderizarTabelaAbastecimentoCompleta();
   atualizarDashboard();
 }
 
 /* =========================
-   BUSCA nas telas "Ver todos" (OS, REQ, ABAST)
+   BUSCA nas telas "Ver todos" (LEGADO)
 ========================= */
-// Estado dos termos de busca por tela
 const BUSCA_STATE = { os: "", req: "", abast: "" };
-
 function norm(s) {
   return String(s ?? "")
     .toLowerCase()
@@ -1069,28 +1002,19 @@ document.addEventListener("DOMContentLoaded", () => {
 
   if (iOS) {
     iOS.value = BUSCA_STATE.os;
-    iOS.addEventListener("input", () => {
-      BUSCA_STATE.os = iOS.value;
-      renderizarTabelaOSFiltrada();
-    });
+    iOS.addEventListener("input", () => { BUSCA_STATE.os = iOS.value; renderizarTabelaOSFiltrada(); });
   }
   if (iREQ) {
     iREQ.value = BUSCA_STATE.req;
-    iREQ.addEventListener("input", () => {
-      BUSCA_STATE.req = iREQ.value;
-      renderizarTabelaREQFiltrada();
-    });
+    iREQ.addEventListener("input", () => { BUSCA_STATE.req = iREQ.value; renderizarTabelaREQFiltrada(); });
   }
   if (iABAST) {
     iABAST.value = BUSCA_STATE.abast;
-    iABAST.addEventListener("input", () => {
-      BUSCA_STATE.abast = iABAST.value;
-      renderizarTabelaAbastecimentoFiltrada();
-    });
+    iABAST.addEventListener("input", () => { BUSCA_STATE.abast = iABAST.value; renderizarTabelaAbastecimentoFiltrada(); });
   }
 });
 
-/* ---- Substitui render padrão pelas versões com filtro quando houver termo ---- */
+/* ---- Wrappers p/ usar versões filtradas quando houver termo ---- */
 const _renderOSOriginal    = typeof renderizarTabelaOSCompleta === "function"    ? renderizarTabelaOSCompleta    : null;
 const _renderREQOriginal   = typeof renderizarTabelaREQCompleta === "function"   ? renderizarTabelaREQCompleta   : null;
 const _renderABASTOriginal = typeof renderizarTabelaAbastecimentoCompleta === "function" ? renderizarTabelaAbastecimentoCompleta : null;
@@ -1156,16 +1080,14 @@ document.addEventListener("DOMContentLoaded", () => {
     if (document.getElementById("modalAbastecimento")?.classList.contains("active")) fecharModalAbastecimento();
   });
 
-  // Trap de foco (Tab/Shift+Tab) dentro dos modais
+  // Trap de foco dentro dos modais
   ["modalOS", "modalRequisicao", "modalAbastecimento"].forEach(id => {
     const modal = document.getElementById(id);
     if (!modal) return;
-    modal.addEventListener("keydown", (e) => {
-      if (e.key === "Tab") trapFocus(modal, e);
-    });
+    modal.addEventListener("keydown", (e) => { if (e.key === "Tab") trapFocus(modal, e); });
   });
 
-  // Submits por Enter dentro dos modais (evita quando foco está em select/textarea)
+  // Submits por Enter (evita quando foco está em select/textarea)
   document.getElementById("modalOS")?.addEventListener("keydown", (e) => {
     if (e.key === "Enter") {
       const tag = document.activeElement?.tagName?.toLowerCase();
@@ -1192,7 +1114,7 @@ document.addEventListener("DOMContentLoaded", () => {
   document.getElementById("selectGaragem")?.addEventListener("change", atualizarCamposPorGaragem);
   document.getElementById("selectGaragemReq")?.addEventListener("change", atualizarCamposReqPorGaragem);
 
-  // Hook dos botões submit dos modais
+  // Submit buttons (apenas 1 handler)
   document.querySelector("[data-submit-os]")?.addEventListener("click", salvarOS);
   document.querySelector("[data-submit-req]")?.addEventListener("click", salvarRequisicao);
   document.querySelector("[data-submit-abast]")?.addEventListener("click", salvarAbastecimento);
@@ -1201,8 +1123,8 @@ document.addEventListener("DOMContentLoaded", () => {
 /* =========================
    Inicialização (migração, selects, dashboard, tela)
 ========================= */
-document.addEventListener("DOMContentLoaded", () => {
-  // Migração (IDs, status e unidade->quantidade para REQ)
+document.addEventListener("DOMContentLoaded", async () => {
+  // Migração (IDs, status e unidade->quantidade para REQ) – legado
   let migrated = false;
 
   ordensServico = (ordensServico || []).map((o) => {
@@ -1219,7 +1141,6 @@ document.addEventListener("DOMContentLoaded", () => {
     const n = { ...r };
     if (!n.id) { n.id = gerarId("REQ"); migrated = true; }
     n.status = normalizarStatus(n.status);
-    // migra unidade -> quantidade se existir (retrocompat)
     if (n.unidade && !n.quantidade) {
       const num = Number(String(n.unidade).replace(",", "."));
       if (!Number.isNaN(num) && num > 0) n.quantidade = num;
@@ -1232,12 +1153,12 @@ document.addEventListener("DOMContentLoaded", () => {
     salvarLista(STORAGE_KEYS.REQ, requisicoes);
   }
 
-  // Selects iniciais (OS e REQ)
+  // Selects iniciais
   popularSelect("selectGaragem", bancoDeDados.garagens, "Escolha uma garagem...");
   popularTipoServico();
-  popularSelectsRequisicao(); // preenche apenas a garagem de REQ
+  popularSelectsRequisicao();
 
-  // DATA do modal de Requisição: hoje por padrão
+  // DATA do modal de Requisição (hoje)
   const inputDataReq = document.getElementById("inputDataReq");
   if (inputDataReq && !inputDataReq.value) inputDataReq.value = toISODateString(new Date());
 
@@ -1250,17 +1171,16 @@ document.addEventListener("DOMContentLoaded", () => {
       frotas.map(f => `<option value="${f.prefixo}">${f.prefixo} • ${f.placa} • ${f.garagem}</option>`).join("");
   })();
 
-  // Pinta dashboard
-  atualizarDashboard();
+  // Pinta dashboard com dados REAIS (via API)
+  await atualizarDashboard();
 
-  // Tela inicial
+  // Tela inicial (minhas-os.js pode esconder para driver)
   alternarTelas('dashboard');
 });
 
 /* =========================
    Expor no window (compat)
 ========================= */
-// SPA / Navegação
 window.alternarTelas = alternarTelas;
 
 // Modais OS
@@ -1284,8 +1204,8 @@ window.salvarOS = salvarOS;
 window.salvarRequisicao = salvarRequisicao;
 window.salvarAbastecimento = salvarAbastecimento;
 
-// Tabelas e ações
-window.renderizarTabelaOSCompleta = window.renderizarTabelaOSCompleta; // wrappers já ajustados pela busca
+// Tabelas e ações (legado)
+window.renderizarTabelaOSCompleta = window.renderizarTabelaOSCompleta;
 window.renderizarTabelaREQCompleta = window.renderizarTabelaREQCompleta;
 window.renderizarTabelaAbastecimentoCompleta = window.renderizarTabelaAbastecimentoCompleta;
 
@@ -1299,10 +1219,15 @@ window.removerREQ = removerREQ;
 
 window.removerAbastecimento = removerAbastecimento;
 
-// === CONFIG ===
-// Se o front e a API estão no MESMO host (Railway servindo tudo), deixe vazio:
-const API_URL = ''; 
-// Se o front estiver na Vercel, use a URL pública da API:
+/* =========================================================
+   API CONFIG + HELPERS (definidos uma única vez)
+   - Se front e API estão no MESMO host (Railway serve tudo): API_URL = ''
+   - Se o front estiver na Vercel: defina a URL pública da API do Railway
+========================================================= */
+
+// MESMO host (Railway serve front + API)
+const API_URL = '';
+// Se o front estiver na Vercel, use algo como:
 // const API_URL = 'https://sistematriunfo01-production.up.railway.app';
 
 // Helper para chamar API com cookie httpOnly
@@ -1318,14 +1243,11 @@ async function api(path, options = {}) {
   return data;
 }
 
-// Preenche o dashboard (cards + "Últimas")
+// Preenche o dashboard (cards + "Últimas") via /api/dashboard/summary
 async function loadDashboard() {
   try {
     const summary = await api('/api/dashboard/summary');
 
-    const setText = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = String(val ?? 0); };
-
-    // OS - contadores
     const osCounts = summary?.os?.counts || {};
     setText('os-count-aberta',       osCounts.aberta    || 0);
     setText('os-count-em-andamento', osCounts.andamento || 0);
@@ -1333,7 +1255,7 @@ async function loadDashboard() {
     setText('os-count-concluida',    osCounts.concluida || 0);
 
     // "ÚLTIMAS OS"
-    const ultimasOSBox = document.getElementById('lista-vazia'); // container que existe no seu HTML
+    const ultimasOSBox = document.getElementById('lista-vazia');
     if (ultimasOSBox) {
       const items = summary?.os?.recent || [];
       if (!items.length) {
@@ -1351,7 +1273,7 @@ async function loadDashboard() {
       }
     }
 
-    // Requisição (somente admin verá valores — driver receberá null em summary.req)
+    // Requisições – apenas admin recebe counts/recent (driver recebe null)
     const reqCounts = summary?.req?.counts;
     if (reqCounts) {
       setText('req-count-aberta',       reqCounts.aberta    || 0);
@@ -1377,111 +1299,9 @@ async function loadDashboard() {
         }
       }
     }
+
+    // (Opcional) summary.abast { totalReg, totalLitros, recent } – use se quiser exibir
   } catch (err) {
     console.error('[loadDashboard] erro:', err.message);
   }
 }
-
-// Envia o modal "Abrir OS" → POST /api/os → atualiza dashboard
-(function wireOpenOS() {
-  const btn = document.querySelector('[data-submit-os]');
-  if (!btn) return;
-  btn.addEventListener('click', async () => {
-    const garagem      = document.getElementById('selectGaragem')?.value || '';
-    const motorista    = document.getElementById('selectMotorista')?.value || '';
-    const frota        = document.getElementById('selectFrota')?.value || '';
-    const km           = document.getElementById('inputKM')?.value || '';
-    const tipoServico  = document.getElementById('selectTipoServico')?.value || '';
-    const descricao    = document.getElementById('textoDescricao')?.value || '';
-
-    if (!garagem || !frota || !tipoServico) {
-      alert('Preencha Garagem, Frota e Tipo de Serviço.');
-      return;
-    }
-
-    btn.disabled = true; const prev = btn.textContent; btn.textContent = 'Enviando...';
-    try {
-      await api('/api/os', {
-        method: 'POST',
-        body: JSON.stringify({ garagem, motorista, frota, km, tipoServico, descricao })
-      });
-      document.querySelector('#modalOS [data-close-modal]')?.click();
-      await loadDashboard();
-      alert('OS criada com sucesso!');
-    } catch (err) {
-      alert('Erro ao abrir OS: ' + err.message);
-    } finally {
-      btn.disabled = false; btn.textContent = prev;
-    }
-  });
-})();
-
-// (Opcional) wire de Requisição e Abastecimento — somente admin
-(function wireReq() {
-  const btn = document.querySelector('[data-submit-req]');
-  if (!btn) return;
-  btn.addEventListener('click', async () => {
-    const material     = document.getElementById('inputMaterial')?.value || '';
-    const quantidade   = document.getElementById('inputQuantidade')?.value || '';
-    const garagemReq   = document.getElementById('selectGaragemReq')?.value || '';
-    const frotaReq     = document.getElementById('selectFrotaReq')?.value || '';
-    const solicitante  = document.getElementById('selectSolicitanteReq')?.value || '';
-    const dataReq      = document.getElementById('inputDataReq')?.value || null;
-    const codigoReq    = document.getElementById('inputCodigoReq')?.value || '';
-    const descricaoReq = document.getElementById('textoDescricaoReq')?.value || '';
-
-    btn.disabled = true; const prev = btn.textContent; btn.textContent = 'Enviando...';
-    try {
-      await api('/api/req', {
-        method: 'POST',
-        body: JSON.stringify({
-          material, quantidade, garagem:garagemReq, frota:frotaReq, solicitante,
-          data: dataReq, codigo: codigoReq, descricao: descricaoReq
-        })
-      });
-      document.querySelector('#modalRequisicao [data-close-modal]')?.click();
-      await loadDashboard();
-      alert('Requisição criada com sucesso!');
-    } catch (err) {
-      alert('Erro ao criar Requisição: ' + err.message);
-    } finally {
-      btn.disabled = false; btn.textContent = prev;
-    }
-  });
-})();
-
-(function wireAbast() {
-  const btn = document.querySelector('[data-submit-abast]');
-  if (!btn) return;
-  btn.addEventListener('click', async () => {
-    const dataHoraAbast   = document.getElementById('inputDataHoraAbast')?.value || null;
-    const frotaAbast      = document.getElementById('selectFrotaAbast')?.value || '';
-    const kmVeiculoAbast  = document.getElementById('inputKMVeiculoAbast')?.value || '';
-    const kmInicioBomba   = document.getElementById('inputKMInicioBomba')?.value || '';
-    const kmFimBomba      = document.getElementById('inputKMFimBomba')?.value || '';
-    const litros          = document.getElementById('inputQuantidadeLitros')?.value || '';
-
-    btn.disabled = true; const prev = btn.textContent; btn.textContent = 'Enviando...';
-    try {
-      await api('/api/abast', {
-        method: 'POST',
-        body: JSON.stringify({
-          dataHora: dataHoraAbast, frota: frotaAbast, kmVeiculo: kmVeiculoAbast,
-          kmInicioBomba, kmFimBomba, litros
-        })
-      });
-      document.querySelector('#modalAbastecimento [data-close-modal]')?.click();
-      await loadDashboard();
-      alert('Abastecimento registrado!');
-    } catch (err) {
-      alert('Erro ao registrar Abastecimento: ' + err.message);
-    } finally {
-      btn.disabled = false; btn.textContent = prev;
-    }
-  });
-})();
-
-// Inicializa o painel
-document.addEventListener('DOMContentLoaded', () => {
-  loadDashboard();
-});
