@@ -11,7 +11,10 @@ const dotenv = require("dotenv");
 dotenv.config();
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+
+// ⚠️ IMPORTANTE: NÃO fixe a porta em 3000 em produção. Railway injeta process.env.PORT.
+const PORT_FROM_ENV = process.env.PORT;           // fornecida pelo Railway
+const PORT = PORT_FROM_ENV || 3000;               // 3000 só local
 const JWT_SECRET = process.env.JWT_SECRET || "dev-secret";
 
 const PUBLIC_DIR = path.join(__dirname, "..", "public");
@@ -76,6 +79,16 @@ app.use(cookieParser());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// 🔎 Logger simples de requisições (ajuda no Railway)
+app.use((req, res, next) => {
+  const start = Date.now();
+  res.on("finish", () => {
+    const ms = Date.now() - start;
+    console.log(`${req.method} ${req.url} -> ${res.statusCode} (${ms}ms)`);
+  });
+  next();
+});
+
 // ====== Auth middlewares ======
 function authRequired(req, res, next) {
   const token = req.cookies?.token;
@@ -96,13 +109,12 @@ function roleRequired(...roles) {
   };
 }
 
-// ====== Healthcheck (novo) ======
+// ====== Healthcheck ======
 app.get("/healthz", (req, res) => {
   res.status(200).json({ ok: true, ts: new Date().toISOString() });
 });
 
 // ====== Rotas de API ======
-// Cadastro
 app.post("/api/auth/register", (req, res) => {
   const { firstName, lastName, password } = req.body;
   if (!isValidName(firstName) || !isValidName(lastName))
@@ -125,7 +137,6 @@ app.post("/api/auth/register", (req, res) => {
   return res.status(201).json({ message: "Cadastro realizado com sucesso." });
 });
 
-// Login
 app.post("/api/auth/login", (req, res) => {
   const { firstName, lastName, password } = req.body;
   const user = findUserByName(firstName, lastName);
@@ -147,16 +158,9 @@ app.post("/api/auth/login", (req, res) => {
   res.json({ message: "Login efetuado", role: user.role });
 });
 
-// Me
 app.get("/api/auth/me", authRequired, (req, res) => res.json({ user: req.user }));
+app.post("/api/auth/logout", (req, res) => { res.clearCookie("token"); res.json({ message: "Logout ok" }); });
 
-// Logout
-app.post("/api/auth/logout", (req, res) => {
-  res.clearCookie("token");
-  res.json({ message: "Logout ok" });
-});
-
-// OS (driver e admin)
 app.get("/api/os", authRequired, roleRequired("driver", "admin"), (req, res) => {
   res.json({
     module: "Abertura de OS",
@@ -168,7 +172,6 @@ app.get("/api/os", authRequired, roleRequired("driver", "admin"), (req, res) => 
   });
 });
 
-// Admin APIs (somente admin)
 app.get("/api/admin/users", authRequired, roleRequired("admin"), (req, res) => {
   const users = readUsers().map((u) => ({
     id: u.id,
@@ -205,12 +208,10 @@ app.post("/api/admin/users", authRequired, roleRequired("admin"), (req, res) => 
 });
 
 // ====== Páginas (guarda de HTML) ======
-// Auth (sem guarda)
 app.get(["/auth", "/auth.html"], (req, res) => {
   res.sendFile(path.join(PUBLIC_DIR, "auth.html"));
 });
 
-// Index (exige estar logado; UI já esconde admin-only via JS)
 app.get(["/", "/index", "/index.html"], authRequired, (req, res) => {
   res.sendFile(path.join(PUBLIC_DIR, "index.html"));
 });
@@ -220,5 +221,7 @@ app.use(express.static(PUBLIC_DIR));
 
 // ====== Start ======
 app.listen(PORT, "0.0.0.0", () => {
-  console.log(`🚀 Server rodando na porta ${PORT}`);
+  console.log(`🚀 Server ouvindo em 0.0.0.0`);
+  console.log(`   • process.env.PORT = ${process.env.PORT || "(vazio)"}`);
+  console.log(`   • PORT efetiva     = ${PORT}`);
 });
