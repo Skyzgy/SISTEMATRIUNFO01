@@ -96,6 +96,11 @@ function roleRequired(...roles) {
   };
 }
 
+// ====== Healthcheck (novo) ======
+app.get("/healthz", (req, res) => {
+  res.status(200).json({ ok: true, ts: new Date().toISOString() });
+});
+
 // ====== Rotas de API ======
 // Cadastro
 app.post("/api/auth/register", (req, res) => {
@@ -217,4 +222,3 @@ app.use(express.static(PUBLIC_DIR));
 app.listen(PORT, "0.0.0.0", () => {
   console.log(`🚀 Server rodando na porta ${PORT}`);
 });
-``
