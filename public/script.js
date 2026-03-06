@@ -1298,3 +1298,190 @@ window.concluirREQ = concluirREQ;
 window.removerREQ = removerREQ;
 
 window.removerAbastecimento = removerAbastecimento;
+
+// === CONFIG ===
+// Se o front e a API estão no MESMO host (Railway servindo tudo), deixe vazio:
+const API_URL = ''; 
+// Se o front estiver na Vercel, use a URL pública da API:
+// const API_URL = 'https://sistematriunfo01-production.up.railway.app';
+
+// Helper para chamar API com cookie httpOnly
+async function api(path, options = {}) {
+  const res = await fetch(`${API_URL}${path}`, {
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+    ...options
+  });
+  let data = {};
+  try { data = await res.json(); } catch {}
+  if (!res.ok) throw new Error(data?.error || `Erro HTTP ${res.status}`);
+  return data;
+}
+
+// Preenche o dashboard (cards + "Últimas")
+async function loadDashboard() {
+  try {
+    const summary = await api('/api/dashboard/summary');
+
+    const setText = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = String(val ?? 0); };
+
+    // OS - contadores
+    const osCounts = summary?.os?.counts || {};
+    setText('os-count-aberta',       osCounts.aberta    || 0);
+    setText('os-count-em-andamento', osCounts.andamento || 0);
+    setText('os-count-aguardando',   osCounts.aguardando|| 0);
+    setText('os-count-concluida',    osCounts.concluida || 0);
+
+    // "ÚLTIMAS OS"
+    const ultimasOSBox = document.getElementById('lista-vazia'); // container que existe no seu HTML
+    if (ultimasOSBox) {
+      const items = summary?.os?.recent || [];
+      if (!items.length) {
+        ultimasOSBox.textContent = 'Sem registros';
+      } else {
+        ultimasOSBox.innerHTML = '';
+        const ul = document.createElement('ul');
+        ul.style.margin = '0'; ul.style.paddingLeft = '16px';
+        items.forEach(r => {
+          const li = document.createElement('li');
+          li.textContent = `${r.id} — ${r.frota || '-'} — ${r.status}`;
+          ul.appendChild(li);
+        });
+        ultimasOSBox.appendChild(ul);
+      }
+    }
+
+    // Requisição (somente admin verá valores — driver receberá null em summary.req)
+    const reqCounts = summary?.req?.counts;
+    if (reqCounts) {
+      setText('req-count-aberta',       reqCounts.aberta    || 0);
+      setText('req-count-em-andamento', reqCounts.andamento || 0);
+      setText('req-count-aguardando',   reqCounts.aguardando|| 0);
+      setText('req-count-concluida',    reqCounts.concluida || 0);
+
+      const ultimasReqBox = document.getElementById('lista-requisicoes');
+      if (ultimasReqBox) {
+        const items = summary?.req?.recent || [];
+        if (!items.length) {
+          ultimasReqBox.textContent = 'Sem registros';
+        } else {
+          ultimasReqBox.innerHTML = '';
+          const ul = document.createElement('ul');
+          ul.style.margin = '0'; ul.style.paddingLeft = '16px';
+          items.forEach(r => {
+            const li = document.createElement('li');
+            li.textContent = `${r.id} — ${r.material || '-'} — ${r.status}`;
+            ul.appendChild(li);
+          });
+          ultimasReqBox.appendChild(ul);
+        }
+      }
+    }
+  } catch (err) {
+    console.error('[loadDashboard] erro:', err.message);
+  }
+}
+
+// Envia o modal "Abrir OS" → POST /api/os → atualiza dashboard
+(function wireOpenOS() {
+  const btn = document.querySelector('[data-submit-os]');
+  if (!btn) return;
+  btn.addEventListener('click', async () => {
+    const garagem      = document.getElementById('selectGaragem')?.value || '';
+    const motorista    = document.getElementById('selectMotorista')?.value || '';
+    const frota        = document.getElementById('selectFrota')?.value || '';
+    const km           = document.getElementById('inputKM')?.value || '';
+    const tipoServico  = document.getElementById('selectTipoServico')?.value || '';
+    const descricao    = document.getElementById('textoDescricao')?.value || '';
+
+    if (!garagem || !frota || !tipoServico) {
+      alert('Preencha Garagem, Frota e Tipo de Serviço.');
+      return;
+    }
+
+    btn.disabled = true; const prev = btn.textContent; btn.textContent = 'Enviando...';
+    try {
+      await api('/api/os', {
+        method: 'POST',
+        body: JSON.stringify({ garagem, motorista, frota, km, tipoServico, descricao })
+      });
+      document.querySelector('#modalOS [data-close-modal]')?.click();
+      await loadDashboard();
+      alert('OS criada com sucesso!');
+    } catch (err) {
+      alert('Erro ao abrir OS: ' + err.message);
+    } finally {
+      btn.disabled = false; btn.textContent = prev;
+    }
+  });
+})();
+
+// (Opcional) wire de Requisição e Abastecimento — somente admin
+(function wireReq() {
+  const btn = document.querySelector('[data-submit-req]');
+  if (!btn) return;
+  btn.addEventListener('click', async () => {
+    const material     = document.getElementById('inputMaterial')?.value || '';
+    const quantidade   = document.getElementById('inputQuantidade')?.value || '';
+    const garagemReq   = document.getElementById('selectGaragemReq')?.value || '';
+    const frotaReq     = document.getElementById('selectFrotaReq')?.value || '';
+    const solicitante  = document.getElementById('selectSolicitanteReq')?.value || '';
+    const dataReq      = document.getElementById('inputDataReq')?.value || null;
+    const codigoReq    = document.getElementById('inputCodigoReq')?.value || '';
+    const descricaoReq = document.getElementById('textoDescricaoReq')?.value || '';
+
+    btn.disabled = true; const prev = btn.textContent; btn.textContent = 'Enviando...';
+    try {
+      await api('/api/req', {
+        method: 'POST',
+        body: JSON.stringify({
+          material, quantidade, garagem:garagemReq, frota:frotaReq, solicitante,
+          data: dataReq, codigo: codigoReq, descricao: descricaoReq
+        })
+      });
+      document.querySelector('#modalRequisicao [data-close-modal]')?.click();
+      await loadDashboard();
+      alert('Requisição criada com sucesso!');
+    } catch (err) {
+      alert('Erro ao criar Requisição: ' + err.message);
+    } finally {
+      btn.disabled = false; btn.textContent = prev;
+    }
+  });
+})();
+
+(function wireAbast() {
+  const btn = document.querySelector('[data-submit-abast]');
+  if (!btn) return;
+  btn.addEventListener('click', async () => {
+    const dataHoraAbast   = document.getElementById('inputDataHoraAbast')?.value || null;
+    const frotaAbast      = document.getElementById('selectFrotaAbast')?.value || '';
+    const kmVeiculoAbast  = document.getElementById('inputKMVeiculoAbast')?.value || '';
+    const kmInicioBomba   = document.getElementById('inputKMInicioBomba')?.value || '';
+    const kmFimBomba      = document.getElementById('inputKMFimBomba')?.value || '';
+    const litros          = document.getElementById('inputQuantidadeLitros')?.value || '';
+
+    btn.disabled = true; const prev = btn.textContent; btn.textContent = 'Enviando...';
+    try {
+      await api('/api/abast', {
+        method: 'POST',
+        body: JSON.stringify({
+          dataHora: dataHoraAbast, frota: frotaAbast, kmVeiculo: kmVeiculoAbast,
+          kmInicioBomba, kmFimBomba, litros
+        })
+      });
+      document.querySelector('#modalAbastecimento [data-close-modal]')?.click();
+      await loadDashboard();
+      alert('Abastecimento registrado!');
+    } catch (err) {
+      alert('Erro ao registrar Abastecimento: ' + err.message);
+    } finally {
+      btn.disabled = false; btn.textContent = prev;
+    }
+  });
+})();
+
+// Inicializa o painel
+document.addEventListener('DOMContentLoaded', () => {
+  loadDashboard();
+});
