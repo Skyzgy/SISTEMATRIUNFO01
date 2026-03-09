@@ -1305,3 +1305,44 @@ async function loadDashboard() {
     console.error('[loadDashboard] erro:', err.message);
   }
 }
+/* =========================================================
+   FAILSAFE de navegação e modais por delegação de eventos
+   (garante clique funcional mesmo se algum listener não anexou)
+   ========================================================= */
+document.addEventListener('click', (ev) => {
+  const target = ev.target;
+
+  // 1) Navegação entre telas (SPA)
+  const navBtn = target.closest('[data-nav-target]');
+  if (navBtn) {
+    const tela = navBtn.getAttribute('data-nav-target');
+    if (typeof window.alternarTelas === 'function') {
+      try { window.alternarTelas(tela); } catch(e) { console.warn('alternarTelas falhou:', e); }
+    }
+    return; // evita "bater" em outras regras
+  }
+
+  // 2) Abrir modais
+  const openBtn = target.closest('[data-open-modal]');
+  if (openBtn) {
+    const tipo = openBtn.getAttribute('data-open-modal');
+    try {
+      if (tipo === 'os'    && typeof window.abrirModal === 'function')               window.abrirModal();
+      if (tipo === 'req'   && typeof window.abrirModalRequisicao === 'function')     window.abrirModalRequisicao();
+      if (tipo === 'abast' && typeof window.abrirModalAbastecimento === 'function')  window.abrirModalAbastecimento();
+    } catch(e) { console.warn('abrir modal falhou:', e); }
+    return;
+  }
+
+  // 3) Fechar modais
+  const closeBtn = target.closest('[data-close-modal]');
+  if (closeBtn) {
+    const modal = closeBtn.closest('.modal-overlay');
+    try {
+      if (modal?.id === 'modalOS'             && typeof window.fecharModal === 'function')                   window.fecharModal();
+      if (modal?.id === 'modalRequisicao'     && typeof window.fecharModalRequisicao === 'function')         window.fecharModalRequisicao();
+      if (modal?.id === 'modalAbastecimento'  && typeof window.fecharModalAbastecimento === 'function')      window.fecharModalAbastecimento();
+    } catch(e) { console.warn('fechar modal falhou:', e); }
+    return;
+  }
+});
