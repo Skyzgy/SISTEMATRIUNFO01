@@ -1346,3 +1346,36 @@ document.addEventListener('click', (ev) => {
     return;
   }
 });
+// === LOGOUT (Sair do Sistema) ===
+// Requer que exista um botão com id="btnLogout" no index.html
+document.addEventListener('DOMContentLoaded', () => {
+  const btnLogout = document.getElementById('btnLogout');
+  if (!btnLogout) return;
+
+  // Evita múltiplos handlers
+  if (btnLogout.dataset.wired === '1') return;
+  btnLogout.dataset.wired = '1';
+
+  btnLogout.addEventListener('click', async (ev) => {
+    ev.preventDefault();
+    btnLogout.disabled = true;
+    const prev = btnLogout.textContent;
+    btnLogout.textContent = 'Saindo...';
+
+    try {
+      // Chama o back-end para apagar o cookie httpOnly
+      await api('/api/auth/logout', {
+        method: 'POST',
+        body: JSON.stringify({}) // corpo vazio só p/ manter Content-Type
+      });
+
+      // Redireciona para a tela de login
+      window.location.href = '/auth';
+    } catch (err) {
+      console.error('[logout] erro:', err);
+      alert('Não foi possível sair agora. Tente novamente.');
+      btnLogout.disabled = false;
+      btnLogout.textContent = prev;
+    }
+  });
+});
