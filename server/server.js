@@ -1,13 +1,17 @@
 // server/server.js
 const express = require("express");
-const fs = require("fs");
-const path = require("path");
-const bcrypt = require("bcryptjs");
-const jwt = require("jsonwebtoken");
 const cookieParser = require("cookie-parser");
 const cors = require("cors");
+const jwt = require("jsonwebtoken");
+const bcrypt = require("bcryptjs");
+const path = require("path");
+const fs = require("fs");
 
-// Carrega .env apenas fora de produção (no Railway NÃO carregar para não travar a PORT)
+// Prisma Client (PostgreSQL)
+const { PrismaClient } = require("@prisma/client");
+const prisma = new PrismaClient();
+
+// .env local apenas fora de produção
 if (process.env.NODE_ENV !== "production") {
   require("dotenv").config();
 }
@@ -16,113 +20,54 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 const JWT_SECRET = process.env.JWT_SECRET || "dev-secret";
 
-// ====== Caminhos ======
+// ====== PÚBLICO ======
 const PUBLIC_DIR = path.join(__dirname, "..", "public");
-const USERS_DB   = path.join(__dirname, "users.json");
-const DATA_DIR   = path.join(__dirname, "data");
-const OS_DB      = path.join(DATA_DIR, "os.json");
-const REQ_DB     = path.join(DATA_DIR, "req.json");
-const ABAST_DB   = path.join(DATA_DIR, "abast.json");
-// Sequência global de OS (incremental infinito)
-const SEQ_DB     = path.join(DATA_DIR, "os-sequence.json");
 
-// ====== Helpers de arquivo ======
-function ensureDir(dir) { if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true }); }
-function ensureFile(file, fallback) {
-  if (!fs.existsSync(file)) fs.writeFileSync(file, fallback, "utf8");
-}
-function readJson(file, fallbackArr = true) {
-  try { return JSON.parse(fs.readFileSync(file, "utf8")); }
-  catch { return fallbackArr ? [] : null; }
-}
-function writeJson(file, data) {
-  fs.writeFileSync(file, JSON.stringify(data, null, 2), "utf8");
-}
-
-// Boot arquivos/pastas
-ensureDir(DATA_DIR);
-ensureFile(OS_DB, "[]");
-ensureFile(REQ_DB, "[]");
-ensureFile(ABAST_DB, "[]");
-ensureFile(USERS_DB, "[]");
-// SEQ_DB salvo como objeto { last: number }
-if (!fs.existsSync(SEQ_DB)) {
-  fs.writeFileSync(SEQ_DB, JSON.stringify({ last: 0 }, null, 2), "utf8");
-}
-
-// Helpers users
-function readUsers(){ return readJson(USERS_DB, true); }
-function writeUsers(users){ writeJson(USERS_DB, users); }
-
-// Sequência (incremental infinito)
-function readSeq() {
-  try {
-    const o = JSON.parse(fs.readFileSync(SEQ_DB, "utf8"));
-    return { last: Number(o?.last) || 0 };
-  } catch {
-    return { last: 0 };
-  }
-}
-function writeSeq(n) {
-  writeJson(SEQ_DB, { last: Number(n) || 0 });
-}
-function nextSequence() {
-  const s = readSeq();
-  const next = (Number(s.last) || 0) + 1;
-  writeSeq(next);
-  return next; // inteiro: 1,2,3...
-}
-function osNumberFrom(seq) {
-  const year = new Date().getFullYear();
-  return `${year}-${String(seq).padStart(6, "0")}`; // 2026-000001
-}
-
-function randomId(prefix = "u") { return `${prefix}_${Math.random().toString(36).slice(2)}${Date.now().toString(36)}`; }
-function isValidName(s){ return typeof s==="string" && s.trim().length>=2 && s.trim().length<=60; }
-function isValidSixDigitPassword(p){ return /^\d{6}$/.test(String(p)); }
-
-// ====== Seed Admin ======
-(function seedAdmin(){
-  const users = readUsers();
-  const hasAdmin = users.some(u => u.role === "admin");
-  if (!hasAdmin) {
-    const firstName = process.env.ADMIN_FIRST_NAME || "Admin";
-    const lastName  = process.env.ADMIN_LAST_NAME  || "Master";
-    const password  = process.env.ADMIN_PASSWORD  || "123456";
-    if (!isValidSixDigitPassword(password)) {
-      console.warn('ADMIN_PASSWORD deve ter 6 dígitos numéricos. Usando "123456".');
-    }
-    users.push({
-      id: randomId("u"),
-      firstName, lastName,
-      passwordHash: bcrypt.hashSync(password, 10),
-      role: "admin",
-      createdAt: new Date().toISOString()
-    });
-    writeUsers(users);
-    console.log(`✅ Admin seed criado: ${firstName} ${lastName}`);
-  }
-})();
-
-// ====== Middlewares Globais ======
+// ====== MIDDLEWARES ======
 app.use(cors({ origin: true, credentials: true }));
 app.use(cookieParser());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use(express.static(PUBLIC_DIR));
 
 // Logger simples
 app.use((req, res, next) => {
   const t0 = Date.now();
-  res.on("finish", () => console.log(`${req.method} ${req.url} -> ${res.statusCode} (${Date.now()-t0}ms)`));
+  res.on("finish", () => {
+    console.log(`${req.method} ${req.url} -> ${res.statusCode} (${Date.now()-t0}ms)`);
+  });
   next();
 });
 
-// ====== Auth middlewares ======
+// ====== HELPERS ======
+function isValidName(s){ return typeof s==="string" && s.trim().length>=2 && s.trim().length<=60; }
+function isValidSixDigitPassword(p){ return /^\d{6}$/.test(String(p)); }
+
+// Gera próximo número de OS como transação:
+// 1) upsert em OSSequence (id=1)
+// 2) incrementa last e devolve seq e id "YYYY-000001"
+async function nextOSIdTx(tx) {
+  const seqRow = await tx.oSSequence.upsert({
+    where: { id: 1 },
+    create: { id: 1, last: 1 },
+    update: { last: { increment: 1 } }
+  });
+  const seq = seqRow.last; // já incrementado
+  const year = new Date().getFullYear();
+  const osId = `${year}-${String(seq).padStart(6, "0")}`;
+  return { seq, osId };
+}
+
+// Middlewares de auth
 function authRequired(req, res, next) {
   const token = req.cookies?.token;
   if (!token) return res.status(401).json({ error: "Não autenticado" });
-  try { req.user = jwt.verify(token, JWT_SECRET); next(); }
-  catch { return res.status(401).json({ error: "Sessão inválida/expirada" }); }
+  try {
+    req.user = jwt.verify(token, JWT_SECRET);
+    next();
+  } catch {
+    return res.status(401).json({ error: "Sessão inválida/expirada" });
+  }
 }
 function roleRequired(...roles) {
   return (req, res, next) => {
@@ -132,297 +77,386 @@ function roleRequired(...roles) {
   };
 }
 
-// ====== Healthcheck ======
+// ====== HEALTHCHECK / PÁGINAS ======
 app.get("/healthz", (_req, res) => res.status(200).json({ ok: true, ts: new Date().toISOString() }));
-
-// ====== Auth ======
-app.post("/api/auth/register", (req, res) => {
-  const { firstName, lastName, password } = req.body;
-  if (!isValidName(firstName) || !isValidName(lastName))
-    return res.status(400).json({ error: "Nome e sobrenome devem ter de 2 a 60 caracteres." });
-  if (!isValidSixDigitPassword(password))
-    return res.status(400).json({ error: "A senha deve ter 6 dígitos numéricos." });
-
-  const users = readUsers();
-  if (users.find(u => u.firstName.toLowerCase()===String(firstName).toLowerCase()
-                   && u.lastName.toLowerCase()===String(lastName).toLowerCase()))
-    return res.status(409).json({ error: "Usuário já cadastrado." });
-
-  users.push({
-    id: randomId("u"),
-    firstName: firstName.trim(),
-    lastName:  lastName.trim(),
-    passwordHash: bcrypt.hashSync(password, 10),
-    role: "driver", // 👈 SEMPRE motorista no cadastro normal
-    createdAt: new Date().toISOString()
-  });
-  writeUsers(users);
-  return res.status(201).json({ message: "Cadastro realizado com sucesso." });
-});
-
-app.post("/api/auth/login", (req, res) => {
-  const { firstName, lastName, password } = req.body;
-  const users = readUsers();
-  const user = users.find(u => u.firstName.toLowerCase()===String(firstName||"").toLowerCase()
-                            && u.lastName.toLowerCase()===String(lastName||"").toLowerCase());
-  if (!user) return res.status(401).json({ error: "Credenciais inválidas." });
-  if (!bcrypt.compareSync(String(password||""), user.passwordHash))
-    return res.status(401).json({ error: "Credenciais inválidas." });
-
-  const token = jwt.sign(
-    { id:user.id, firstName:user.firstName, lastName:user.lastName, role:user.role },
-    JWT_SECRET,
-    { expiresIn: "8h" }
-  );
-  res.cookie("token", token, {
-    httpOnly: true,
-    sameSite: "lax",                        // se front e API forem domínios diferentes (HTTPS), pode usar 'none'
-    secure: process.env.NODE_ENV === "production",
-    maxAge: 1000*60*60*8
-  });
-  res.json({ message: "Login efetuado", role: user.role });
-});
-
-app.get("/api/auth/me", authRequired, (req, res) => res.json({ user: req.user }));
-
-app.post("/api/auth/logout", (_req, res) => {
-  res.clearCookie("token");
-  res.json({ message: "Logout ok" });
-});
-
-// ====== MÓDULO: OS ======
-// Criar OS (driver e admin) — com ID sequencial global
-app.post("/api/os", authRequired, roleRequired("driver","admin"), (req, res) => {
-  const { garagem, motorista, frota, km, tipoServico, descricao } = req.body;
-
-  // Gera ID sequencial: 2026-000001, 2026-000002, ...
-  const seq = nextSequence();
-  const osId = osNumberFrom(seq);
-
-  const os = readJson(OS_DB, true);
-  const now = new Date().toISOString();
-  const openedByName = `${req.user?.firstName || ""} ${req.user?.lastName || ""}`.trim();
-
-  const item = {
-    id: osId,                         // 👈 ID profissional
-    seq,                              // número puro (opcionalmente útil)
-    garagem: String(garagem||"").trim(),
-    motorista: String(motorista||"").trim(),
-    frota: String(frota||"").trim(),
-    km: Number(km||0),
-    tipoServico: String(tipoServico||"").trim(),
-    descricao: String(descricao||"").trim(),
-    status: "aberta",
-    createdBy: req.user?.id,
-    openedByName,                     // 👈 quem abriu (nome)
-    openedAt: now,                    // 👈 quando abriu (ISO)
-    createdAt: now,
-    updatedAt: now
-  };
-
-  os.push(item);
-  writeJson(OS_DB, os);
-  res.status(201).json({ message: "OS criada", os: item });
-});
-
-// Listar OS – driver vê só as dele; admin vê tudo (admin pode ?mine=1)
-app.get("/api/os", authRequired, roleRequired("driver","admin"), (req, res) => {
-  const { status, frota, limit=50, page=1, mine } = req.query;
-  let rows = readJson(OS_DB, true);
-
-  if (req.user.role === "driver") {
-    rows = rows.filter(r => r.createdBy === req.user.id);       // 👈 restrição por usuário
-  } else if (String(mine) === "1" || String(mine).toLowerCase() === "true") {
-    rows = rows.filter(r => r.createdBy === req.user.id);
-  }
-
-  if (status) rows = rows.filter(r => r.status === status);
-  if (frota)  rows = rows.filter(r => r.frota === String(frota));
-
-  const p = Math.max(1, Number(page));
-  const l = Math.max(1, Math.min(1000, Number(limit)));
-  const start = (p-1)*l, end = start + l;
-  res.json({ total: rows.length, page:p, pageSize:l, items: rows.slice(start,end) });
-});
-
-// Alterar status da OS (admin)
-app.patch("/api/os/:id/status", authRequired, roleRequired("admin"), (req, res) => {
-  const { id } = req.params; const { status } = req.body;
-  const allowed = ["aberta","andamento","aguardando","concluida"];
-  if (!allowed.includes(status)) return res.status(400).json({ error: "Status inválido." });
-  const os = readJson(OS_DB, true);
-  const i = os.findIndex(r => r.id === id);
-  if (i<0) return res.status(404).json({ error: "OS não encontrada." });
-  os[i].status = status; os[i].updatedAt = new Date().toISOString();
-  writeJson(OS_DB, os);
-  res.json({ message: "Status atualizado", os: os[i] });
-});
-
-// Métricas de OS
-app.get("/api/os/metrics", authRequired, roleRequired("driver","admin"), (_req, res) => {
-  const rows = readJson(OS_DB, true);
-  const counts = { aberta:0, andamento:0, aguardando:0, concluida:0 };
-  rows.forEach(r => { counts[r.status] = (counts[r.status]||0)+1; });
-  res.json({ counts, total: rows.length });
-});
-
-// Últimas OS
-app.get("/api/os/recent", authRequired, roleRequired("driver","admin"), (req, res) => {
-  const limit = Math.max(1, Math.min(50, Number(req.query.limit || 10)));
-  const rows = readJson(OS_DB, true)
-    .sort((a,b)=> (b.createdAt||"").localeCompare(a.createdAt||""))
-    .slice(0, limit);
-  res.json({ items: rows });
-});
-
-// ====== MÓDULO: REQUISIÇÃO (admin) ======
-app.post("/api/req", authRequired, roleRequired("admin"), (req, res) => {
-  const { material, quantidade, garagem, frota, solicitante, data, codigo, descricao } = req.body;
-  const reqs = readJson(REQ_DB, true);
-  const now = new Date().toISOString();
-  const item = {
-    id: randomId("req"),
-    material: String(material||"").trim(),
-    quantidade: Number(quantidade||0),
-    garagem: String(garagem||"").trim(),
-    frota: String(frota||"").trim(),
-    solicitante: String(solicitante||"").trim(),
-    data: data || null,
-    codigo: String(codigo||"").trim(),
-    descricao: String(descricao||"").trim(),
-    status: "aberta",
-    createdBy: req.user?.id,
-    createdAt: now,
-    updatedAt: now
-  };
-  reqs.push(item); writeJson(REQ_DB, reqs);
-  res.status(201).json({ message: "Requisição criada", req: item });
-});
-
-app.get("/api/req", authRequired, roleRequired("admin"), (req, res) => {
-  const { status, frota, material, limit=50, page=1 } = req.query;
-  let rows = readJson(REQ_DB, true);
-  if (status) rows = rows.filter(r => r.status === status);
-  if (frota)  rows = rows.filter(r => r.frota === String(frota));
-  if (material) rows = rows.filter(r => r.material?.toLowerCase().includes(String(material).toLowerCase()));
-  const p = Math.max(1, Number(page)); const l = Math.max(1, Math.min(1000, Number(limit)));
-  const start = (p-1)*l; const end = start + l;
-  res.json({ total: rows.length, page:p, pageSize:l, items: rows.slice(start,end) });
-});
-
-app.patch("/api/req/:id/status", authRequired, roleRequired("admin"), (req, res) => {
-  const { id } = req.params; const { status } = req.body;
-  const allowed = ["aberta","andamento","aguardando","concluida"];
-  if (!allowed.includes(status)) return res.status(400).json({ error: "Status inválido." });
-  const rows = readJson(REQ_DB, true);
-  const i = rows.findIndex(r => r.id === id);
-  if (i<0) return res.status(404).json({ error: "Requisição não encontrada." });
-  rows[i].status = status; rows[i].updatedAt = new Date().toISOString();
-  writeJson(REQ_DB, rows);
-  res.json({ message: "Status atualizado", req: rows[i] });
-});
-
-app.get("/api/req/metrics", authRequired, roleRequired("admin"), (_req, res) => {
-  const rows = readJson(REQ_DB, true);
-  const counts = { aberta:0, andamento:0, aguardando:0, concluida:0 };
-  rows.forEach(r => { counts[r.status] = (counts[r.status]||0)+1; });
-  res.json({ counts, total: rows.length });
-});
-
-app.get("/api/req/recent", authRequired, roleRequired("admin"), (req, res) => {
-  const limit = Math.max(1, Math.min(50, Number(req.query.limit || 10)));
-  const rows = readJson(REQ_DB, true)
-    .sort((a,b)=> (b.createdAt||"").localeCompare(a.createdAt||""))
-    .slice(0, limit);
-  res.json({ items: rows });
-});
-
-// ====== MÓDULO: ABASTECIMENTO (admin) ======
-app.post("/api/abast", authRequired, roleRequired("admin"), (req, res) => {
-  const { dataHora, frota, kmVeiculo, kmInicioBomba, kmFimBomba, litros } = req.body;
-  const rows = readJson(ABAST_DB, true);
-  const item = {
-    id: randomId("ab"),
-    dataHora: dataHora || new Date().toISOString(),
-    frota: String(frota||"").trim(),
-    kmVeiculo: Number(kmVeiculo||0),
-    kmInicioBomba: Number(kmInicioBomba||0),
-    kmFimBomba: Number(kmFimBomba||0),
-    litros: Number(litros||0),
-    createdBy: req.user?.id,
-    createdAt: new Date().toISOString()
-  };
-  rows.push(item); writeJson(ABAST_DB, rows);
-  res.status(201).json({ message: "Abastecimento registrado", abast: item });
-});
-
-app.get("/api/abast", authRequired, roleRequired("admin"), (req, res) => {
-  const { frota, limit=50, page=1 } = req.query;
-  let rows = readJson(ABAST_DB, true);
-  if (frota) rows = rows.filter(r => r.frota === String(frota));
-  const p = Math.max(1, Number(page)); const l = Math.max(1, Math.min(1000, Number(limit)));
-  const start = (p-1)*l; const end = start + l;
-  res.json({ total: rows.length, page:p, pageSize:l, items: rows.slice(start,end) });
-});
-
-app.get("/api/abast/metrics", authRequired, roleRequired("admin"), (_req, res) => {
-  const rows = readJson(ABAST_DB, true);
-  const totalReg = rows.length;
-  const totalLitros = rows.reduce((s,r)=> s + Number(r.litros||0), 0);
-  res.json({ totalReg, totalLitros });
-});
-
-app.get("/api/abast/recent", authRequired, roleRequired("admin"), (req, res) => {
-  const limit = Math.max(1, Math.min(50, Number(req.query.limit || 10)));
-  const rows = readJson(ABAST_DB, true)
-    .sort((a,b)=> (b.createdAt||"").localeCompare(a.createdAt||""))
-    .slice(0, limit);
-  res.json({ items: rows });
-});
-
-// ====== DASHBOARD SUMMARY ======
-app.get("/api/dashboard/summary", authRequired, roleRequired("driver","admin"), (req, res) => {
-  const osRows = readJson(OS_DB, true);
-  const osCounts = { aberta:0, andamento:0, aguardando:0, concluida:0 };
-  osRows.forEach(r => { osCounts[r.status] = (osCounts[r.status]||0)+1; });
-  const osRecent = osRows.sort((a,b)=> (b.createdAt||"").localeCompare(a.createdAt||"")).slice(0, 10);
-
-  let reqCounts = null, reqRecent = null;
-  if (req.user.role === "admin") {
-    const reqRows = readJson(REQ_DB, true);
-    reqCounts = { aberta:0, andamento:0, aguardando:0, concluida:0 };
-    reqRows.forEach(r => { reqCounts[r.status] = (reqCounts[r.status]||0)+1; });
-    reqRecent = reqRows.sort((a,b)=> (b.createdAt||"").localeCompare(a.createdAt||"")).slice(0, 10);
-  }
-
-  let abast = null;
-  if (req.user.role === "admin") {
-    const abRows = readJson(ABAST_DB, true);
-    const totalReg = abRows.length;
-    const totalLitros = abRows.reduce((s,r)=> s + Number(r.litros||0), 0);
-    const recent = abRows.sort((a,b)=> (b.createdAt||"").localeCompare(a.createdAt||"")).slice(0, 10);
-    abast = { totalReg, totalLitros, recent };
-  }
-
-  res.json({
-    role: req.user.role,
-    os: { counts: osCounts, recent: osRecent },
-    req: reqCounts ? { counts: reqCounts, recent: reqRecent } : null,
-    abast
-  });
-});
-
-// ====== Páginas ======
 app.get(['/auth','/auth.html'], (_req, res) => res.sendFile(path.join(PUBLIC_DIR, 'auth.html')));
 app.get(['/', '/index', '/index.html'], authRequired, (_req, res) => res.sendFile(path.join(PUBLIC_DIR, 'index.html')));
 
-// Estáticos
-app.use(express.static(PUBLIC_DIR));
+// ====== SEED ADMIN (se não houver) ======
+async function seedAdminIfMissing() {
+  const admin = await prisma.user.findFirst({ where: { role: "admin" } });
+  if (admin) return;
+  const firstName = process.env.ADMIN_FIRST_NAME || "Admin";
+  const lastName  = process.env.ADMIN_LAST_NAME  || "Master";
+  const password  = process.env.ADMIN_PASSWORD  || "123456";
+  const hash = bcrypt.hashSync(password, 10);
+  await prisma.user.create({
+    data: { firstName, lastName, passwordHash: hash, role: "admin" }
+  });
+  console.log(`✅ Admin seed criado: ${firstName} ${lastName}`);
+}
 
-// Start
-app.listen(PORT, '0.0.0.0', () => {
-  console.log(`🚀 Server ouvindo em 0.0.0.0`);
-  console.log(`   • NODE_ENV        = ${process.env.NODE_ENV || '(vazio)'}`);
-  console.log(`   • process.env.PORT= ${process.env.PORT || '(vazio)'}`);
-  console.log(`   • PORT efetiva    = ${PORT}`);
+// ====== AUTH ======
+app.post("/api/auth/register", async (req, res) => {
+  try {
+    const { firstName, lastName, password } = req.body;
+    if (!isValidName(firstName) || !isValidName(lastName))
+      return res.status(400).json({ error: "Nome e sobrenome devem ter de 2 a 60 caracteres." });
+    if (!isValidSixDigitPassword(password))
+      return res.status(400).json({ error: "A senha deve ter 6 dígitos numéricos." });
+
+    const exists = await prisma.user.findFirst({
+      where: {
+        firstName: { equals: String(firstName).trim(), mode: "insensitive" },
+        lastName:  { equals: String(lastName).trim(),  mode: "insensitive" }
+      }
+    });
+    if (exists) return res.status(409).json({ error: "Usuário já cadastrado." });
+
+    await prisma.user.create({
+      data: {
+        firstName: firstName.trim(),
+        lastName:  lastName.trim(),
+        passwordHash: bcrypt.hashSync(password, 10),
+        role: "driver"
+      }
+    });
+    return res.status(201).json({ message: "Cadastro realizado com sucesso." });
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ error: "Erro ao registrar." });
+  }
 });
+
+app.post("/api/auth/login", async (req, res) => {
+  try {
+    const { firstName, lastName, password } = req.body;
+    const user = await prisma.user.findFirst({
+      where: {
+        firstName: { equals: String(firstName||""), mode: "insensitive" },
+        lastName:  { equals: String(lastName||""),  mode: "insensitive" }
+      }
+    });
+    if (!user) return res.status(401).json({ error: "Credenciais inválidas." });
+    if (!bcrypt.compareSync(String(password||""), user.passwordHash))
+      return res.status(401).json({ error: "Credenciais inválidas." });
+
+    const token = jwt.sign({
+      id: user.id, firstName: user.firstName, lastName: user.lastName, role: user.role
+    }, JWT_SECRET, { expiresIn: "8h" });
+
+    res.cookie("token", token, {
+      httpOnly: true,
+      sameSite: "lax",
+      secure: process.env.NODE_ENV === "production",
+      maxAge: 1000*60*60*8
+    });
+    res.json({ message: "Login efetuado", role: user.role });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: "Erro ao autenticar." });
+  }
+});
+
+app.get("/api/auth/me", authRequired, (req, res) => res.json({ user: req.user }));
+app.post("/api/auth/logout", (_req, res) => { res.clearCookie("token"); res.json({ message: "Logout ok" }); });
+
+// ====== OS ======
+// Criar OS (driver/admin) com ID sequencial global
+app.post("/api/os", authRequired, roleRequired("driver","admin"), async (req, res) => {
+  try {
+    const { garagem, motorista, frota, km, tipoServico, descricao } = req.body;
+    const result = await prisma.$transaction(async (tx) => {
+      const { seq, osId } = await nextOSIdTx(tx);
+      const now = new Date();
+      const openedByName = `${req.user?.firstName || ""} ${req.user?.lastName || ""}`.trim();
+
+      const item = await tx.oS.create({
+        data: {
+          id: osId,
+          seq,
+          garagem: String(garagem||"").trim(),
+          motorista: motorista ? String(motorista).trim() : null,
+          frota: String(frota||"").trim(),
+          km: Number(km||0),
+          tipoServico: String(tipoServico||"").trim(),
+          descricao: String(descricao||"").trim(),
+          status: "aberta",
+          createdBy: req.user?.id || null,
+          openedByName,
+          openedAt: now,
+          createdAt: now
+        }
+      });
+      return item;
+    });
+
+    return res.status(201).json({ message: "OS criada", os: result });
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ error: "Erro ao criar OS." });
+  }
+});
+
+// Listar OS – driver vê só as dele; admin vê tudo (admin pode ?mine=1)
+app.get("/api/os", authRequired, roleRequired("driver","admin"), async (req, res) => {
+  try {
+    const { status, frota, limit=50, page=1, mine } = req.query;
+
+    const take = Math.max(1, Math.min(1000, Number(limit)));
+    const p = Math.max(1, Number(page));
+    const skip = (p-1)*take;
+
+    const where = {};
+    if (status) where.status = String(status);
+    if (frota)  where.frota = String(frota);
+
+    if (req.user.role === "driver") {
+      where.createdBy = req.user.id;
+    } else if (String(mine).toLowerCase() === "1" || String(mine).toLowerCase() === "true") {
+      where.createdBy = req.user.id;
+    }
+
+    const [total, items] = await Promise.all([
+      prisma.oS.count({ where }),
+      prisma.oS.findMany({
+        where,
+        orderBy: { createdAt: "desc" },
+        skip, take
+      })
+    ]);
+
+    res.json({ total, page: p, pageSize: take, items });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: "Erro ao listar OS." });
+  }
+});
+
+// Alterar status (admin)
+app.patch("/api/os/:id/status", authRequired, roleRequired("admin"), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status } = req.body;
+    const allowed = ["aberta","andamento","aguardando","concluida"];
+    if (!allowed.includes(status)) return res.status(400).json({ error: "Status inválido." });
+
+    const found = await prisma.oS.findUnique({ where: { id } });
+    if (!found) return res.status(404).json({ error: "OS não encontrada." });
+
+    const upd = await prisma.oS.update({
+      where: { id },
+      data: { status, updatedAt: new Date() }
+    });
+    res.json({ message: "Status atualizado", os: upd });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: "Erro ao atualizar status da OS." });
+  }
+});
+
+// Métricas / Recentes
+app.get("/api/os/metrics", authRequired, roleRequired("driver","admin"), async (_req, res) => {
+  try {
+    const counts = {
+      aberta:     await prisma.oS.count({ where: { status: "aberta" } }),
+      andamento:  await prisma.oS.count({ where: { status: "andamento" } }),
+      aguardando: await prisma.oS.count({ where: { status: "aguardando" } }),
+      concluida:  await prisma.oS.count({ where: { status: "concluida" } }),
+    };
+    const total = counts.aberta + counts.andamento + counts.aguardando + counts.concluida;
+    res.json({ counts, total });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: "Erro ao obter métricas de OS." });
+  }
+});
+
+app.get("/api/os/recent", authRequired, roleRequired("driver","admin"), async (req, res) => {
+  try {
+    const limit = Math.max(1, Math.min(50, Number(req.query.limit || 10)));
+    const items = await prisma.oS.findMany({
+      orderBy: { createdAt: "desc" },
+      take: limit
+    });
+    res.json({ items });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: "Erro ao listar últimas OS." });
+  }
+});
+
+// ====== REQUISIÇÕES (ADMIN) ======
+app.post("/api/req", authRequired, roleRequired("admin"), async (req, res) => {
+  try {
+    const { material, quantidade, garagem, frota, solicitante, data, codigo, descricao } = req.body;
+    const item = await prisma.req.create({
+      data: {
+        material: String(material||"").trim(),
+        quantidade: Number(quantidade||0),
+        garagem: String(garagem||"").trim(),
+        frota: String(frota||"").trim(),
+        solicitante: String(solicitante||"").trim(),
+        data: data ? new Date(data) : null,
+        codigo: String(codigo||"").trim(),
+        descricao: String(descricao||"").trim(),
+        status: "aberta",
+        createdBy: req.user?.id || null
+      }
+    });
+    res.status(201).json({ message: "Requisição criada", req: item });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: "Erro ao criar requisição." });
+  }
+});
+
+app.get("/api/req", authRequired, roleRequired("admin"), async (req, res) => {
+  try {
+    const { status, frota, material, limit=50, page=1 } = req.query;
+    const take = Math.max(1, Math.min(1000, Number(limit)));
+    const p = Math.max(1, Number(page));
+    const skip = (p-1)*take;
+
+    const where = {};
+    if (status) where.status = String(status);
+    if (frota)  where.frota = String(frota);
+    if (material) where.material = { contains: String(material), mode: "insensitive" };
+
+    const [total, items] = await Promise.all([
+      prisma.req.count({ where }),
+      prisma.req.findMany({ where, orderBy: { createdAt: "desc" }, skip, take })
+    ]);
+
+    res.json({ total, page: p, pageSize: take, items });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: "Erro ao listar requisições." });
+  }
+});
+
+app.patch("/api/req/:id/status", authRequired, roleRequired("admin"), async (req, res) => {
+  try {
+    const { id } = req.params; const { status } = req.body;
+    const allowed = ["aberta","andamento","aguardando","concluida"];
+    if (!allowed.includes(status)) return res.status(400).json({ error: "Status inválido." });
+
+    const found = await prisma.req.findUnique({ where: { id } });
+    if (!found) return res.status(404).json({ error: "Requisição não encontrada." });
+
+    const upd = await prisma.req.update({
+      where: { id },
+      data: { status, updatedAt: new Date() }
+    });
+    res.json({ message: "Status atualizado", req: upd });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: "Erro ao atualizar status da requisição." });
+  }
+});
+
+// ====== ABASTECIMENTO (ADMIN) ======
+app.post("/api/abast", authRequired, roleRequired("admin"), async (req, res) => {
+  try {
+    const { dataHora, frota, kmVeiculo, kmInicioBomba, kmFimBomba, litros } = req.body;
+    const item = await prisma.abastecimento.create({
+      data: {
+        dataHora: dataHora ? new Date(dataHora) : new Date(),
+        frota: String(frota||"").trim(),
+        kmVeiculo: Number(kmVeiculo||0),
+        kmInicioBomba: Number(kmInicioBomba||0),
+        kmFimBomba: Number(kmFimBomba||0),
+        litros: Number(litros||0),
+        createdBy: req.user?.id || null
+      }
+    });
+    res.status(201).json({ message: "Abastecimento registrado", abast: item });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: "Erro ao registrar abastecimento." });
+  }
+});
+
+app.get("/api/abast", authRequired, roleRequired("admin"), async (req, res) => {
+  try {
+    const { frota, limit=50, page=1 } = req.query;
+    const take = Math.max(1, Math.min(1000, Number(limit)));
+    const p = Math.max(1, Number(page));
+    const skip = (p-1)*take;
+
+    const where = {};
+    if (frota) where.frota = String(frota);
+
+    const [total, items] = await Promise.all([
+      prisma.abastecimento.count({ where }),
+      prisma.abastecimento.findMany({
+        where,
+        orderBy: { createdAt: "desc" },
+        skip, take
+      })
+    ]);
+
+    res.json({ total, page: p, pageSize: take, items });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: "Erro ao listar abastecimentos." });
+  }
+});
+
+// ====== DASHBOARD SUMMARY ======
+app.get("/api/dashboard/summary", authRequired, roleRequired("driver","admin"), async (req, res) => {
+  try {
+    // OS
+    const [aberta, andamento, aguardando, concluida] = await Promise.all([
+      prisma.oS.count({ where: { status: "aberta" } }),
+      prisma.oS.count({ where: { status: "andamento" } }),
+      prisma.oS.count({ where: { status: "aguardando" } }),
+      prisma.oS.count({ where: { status: "concluida" } }),
+    ]);
+    const osCounts = { aberta, andamento, aguardando, concluida };
+    const osRecent = await prisma.oS.findMany({ orderBy: { createdAt: "desc" }, take: 10 });
+
+    let reqCounts = null, reqRecent = null, abast = null;
+    if (req.user.role === "admin") {
+      const [rA, rAnd, rAg, rC] = await Promise.all([
+        prisma.req.count({ where: { status: "aberta" } }),
+        prisma.req.count({ where: { status: "andamento" } }),
+        prisma.req.count({ where: { status: "aguardando" } }),
+        prisma.req.count({ where: { status: "concluida" } }),
+      ]);
+      reqCounts = { aberta: rA, andamento: rAnd, aguardando: rAg, concluida: rC };
+      reqRecent = await prisma.req.findMany({ orderBy: { createdAt: "desc" }, take: 10 });
+
+      const abRows = await prisma.abastecimento.findMany({ orderBy: { createdAt: "desc" }, take: 10 });
+      const totalReg = await prisma.abastecimento.count();
+      const totalLitros = await prisma.abastecimento.aggregate({ _sum: { litros: true } });
+      abast = { totalReg, totalLitros: Number(totalLitros._sum.litros || 0), recent: abRows };
+    }
+
+    res.json({
+      role: req.user.role,
+      os: { counts: osCounts, recent: osRecent },
+      req: reqCounts ? { counts: reqCounts, recent: reqRecent } : null,
+      abast
+    });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: "Erro ao montar o dashboard." });
+  }
+});
+
+// ====== STARTUP ======
+(async () => {
+  try {
+    await seedAdminIfMissing();
+    app.listen(PORT, '0.0.0.0', () => {
+      console.log(`🚀 Server ouvindo em 0.0.0.0`);
+      console.log(`   • NODE_ENV        = ${process.env.NODE_ENV || '(vazio)'}`);
+      console.log(`   • process.env.PORT= ${process.env.PORT || '(vazio)'}`);
+      console.log(`   • PORT efetiva    = ${PORT}`);
+    });
+  } catch (err) {
+    console.error("Falha ao iniciar:", err);
+    process.exit(1);
+  }
+})();
