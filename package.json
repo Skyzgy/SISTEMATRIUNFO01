@@ -9,16 +9,16 @@
     "prestart": "prisma migrate deploy --schema=server/prisma/schema.prisma || prisma db push --schema=server/prisma/schema.prisma",
     "postinstall": "prisma generate --schema=server/prisma/schema.prisma"
   },
-  "engines": { "node": ">=18" },
+  "engines": {
+    "node": ">=18"
+  },
   "dependencies": {
+    "@prisma/client": "^5.14.0",
     "bcryptjs": "^2.4.3",
     "cookie-parser": "^1.4.6",
     "cors": "^2.8.5",
     "express": "^4.18.3",
     "jsonwebtoken": "^9.0.2",
-    "@prisma/client": "^5.14.0"
-  },
-  "devDependencies": {
     "prisma": "^5.14.0"
   }
 }
