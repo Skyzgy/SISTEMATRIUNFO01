@@ -6,7 +6,9 @@
    - Navegação SPA
    - Tabelas (legado localStorage, mantidas)
    - API helpers + Dashboard (via /summary)
-   - Guards (driver) + Logout + Failsafe
+   - Tela inicial por perfil (driver → ‘minhas-os’; admin → ‘dashboard’)
+   - Logout
+   - Mobile menu (☰) – abrir/fechar sidebar no celular
    ========================================================= */
 
 "use strict";
@@ -65,7 +67,7 @@ const solicitantesPorGaragem = {
 };
 
 /* =========================
-   Persistência (localStorage) – legado p/ telas "Ver todos"
+   Persistência (localStorage) – legado p/ “Ver todos”
 ========================= */
 const STORAGE_KEYS = { OS: "triunfo_os", REQ: "triunfo_req", ABAST: "triunfo_abast" };
 let ordensServico   = carregarLista(STORAGE_KEYS.OS);
@@ -78,7 +80,7 @@ let abastecimentos  = carregarLista(STORAGE_KEYS.ABAST);
 const STATUS = ["ABERTA", "EM ANDAMENTO", "AGUARDANDO", "CONCLUÍDA"];
 
 /* =========================
-   Utilitários diversos
+   Utilitários
 ========================= */
 function carregarLista(key) { try { return JSON.parse(localStorage.getItem(key)) || []; } catch { return []; } }
 function salvarLista(key, arr) { localStorage.setItem(key, JSON.stringify(arr)); }
@@ -101,13 +103,14 @@ function ISOparaBR(isoStr) {
   return `${d}/${m}/${y}`;
 }
 function escapeHTML(str) {
-  return String(str).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#039;");
+  return String(str)
+    .replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;")
+    .replace(/"/g,"&quot;").replace(/'/g,"&#039;");
 }
 function normalizarStatus(s){ if(!s) return "ABERTA"; const b=String(s).trim().toUpperCase(); if (b==="FECHADA") return "CONCLUÍDA"; return STATUS.includes(b)?b:"ABERTA"; }
-function contarPorStatus(lista){ const m={ "ABERTA":0,"EM ANDAMENTO":0,"AGUARDANDO":0,"CONCLUÍDA":0 }; (lista||[]).forEach(i=>{ m[normalizarStatus(i.status)]++; }); return m; }
 function setText(id,val){ const el=document.getElementById(id); if(el) el.textContent=String(val ?? 0); }
-function hideEl(el){ if(!el) return; el.classList?.add('hidden'); if(el.style) el.style.display='none'; }
-function showEl(el){ if(!el) return; el.classList?.remove('hidden'); if(el.style) el.style.display='block'; }
+function hideEl(el){ if(!el) return; el.classList?.add('hidden'); if (el.style) el.style.display='none'; }
+function showEl(el){ if(!el) return; el.classList?.remove('hidden'); if (el.style) el.style.display='block'; }
 function obterFrotasCombinadas(){ const out=[]; Object.entries(bancoDeDados.veiculos||{}).forEach(([g,lista])=>{ (lista||[]).forEach(v=> out.push({garagem:g,prefixo:v.prefixo,placa:v.placa,modelo:v.modelo})); }); return out; }
 
 /* =========================
@@ -226,7 +229,7 @@ function fecharModalAbastecimento() {
 }
 
 /* =========================
-   Trap de foco dentro dos modais
+   Trap de foco (Tab) em modais
 ========================= */
 function trapFocus(modalEl, e) {
   const focusables = modalEl.querySelectorAll(`
@@ -244,7 +247,7 @@ function trapFocus(modalEl, e) {
 }
 
 /* =========================
-   Navegação entre telas (SPA leve)
+   Navegação SPA
 ========================= */
 function alternarTelas(tela) {
   const ids = ["dashboard", "listagem-os", "listagem-req", "listagem-abast", "minhas-os"];
@@ -264,8 +267,9 @@ function alternarTelas(tela) {
 
   document.getElementById("conteudo")?.focus({ preventScroll: true });
 }
+
 /* =========================
-   População de selects
+   Selects
 ========================= */
 function popularSelect(id, lista, placeholder = "Selecione...") {
   const s = document.getElementById(id);
@@ -286,7 +290,6 @@ function popularTipoServico() {
 }
 
 function popularSelectsRequisicao() {
-  // Preenche somente GARAGEM; FROTA e SOLICITANTE dependem da garagem
   popularSelect("selectGaragemReq", bancoDeDados.garagens, "Escolha uma garagem...");
   const sF = document.getElementById("selectFrotaReq");
   const sS = document.getElementById("selectSolicitanteReq");
@@ -295,7 +298,7 @@ function popularSelectsRequisicao() {
 }
 
 /* =========================
-   Atualização por GARAGEM (OS)
+   Update por GARAGEM
 ========================= */
 function atualizarCamposPorGaragem() {
   const g = document.getElementById("selectGaragem").value;
@@ -323,9 +326,6 @@ function atualizarCamposPorGaragem() {
   }
 }
 
-/* =========================
-   Atualização por GARAGEM (Requisição)
-========================= */
 function atualizarCamposReqPorGaragem() {
   const g     = document.getElementById("selectGaragemReq").value;
   const sFrot = document.getElementById("selectFrotaReq");
@@ -353,8 +353,7 @@ function atualizarCamposReqPorGaragem() {
 }
 
 /* =========================
-   Salvar OS / REQ / ABAST – via API
-   (loadDashboard() será definido depois; aqui só chamamos)
+   Salvar OS/REQ/ABAST – via API
 ========================= */
 async function salvarOS() {
   const garagem   = document.getElementById("selectGaragem").value;
@@ -371,10 +370,7 @@ async function salvarOS() {
   if (!servico) erros.push("Selecione o tipo de serviço.");
   if (!descricao) erros.push("Descreva o problema.");
 
-  if (erros.length) {
-    alert("Verifique os campos:\n- " + erros.join("\n- "));
-    return;
-  }
+  if (erros.length) { alert("Verifique os campos:\n- " + erros.join("\n- ")); return; }
 
   const btn  = document.querySelector('[data-submit-os]');
   const prev = btn?.textContent;
@@ -386,14 +382,14 @@ async function salvarOS() {
       body: JSON.stringify({ garagem, motorista, frota, km, tipoServico: servico, descricao })
     });
 
-    fecharModal();                                  // fecha modal
-    if (typeof loadDashboard === 'function') await loadDashboard();  // atualiza cards/últimas
+    fecharModal();
+    if (typeof loadDashboard === 'function') await loadDashboard();
 
-    // Se a tela "Minhas OS" estiver aberta, atualiza também
     if (typeof loadMyOsHistory === 'function') {
       const sec = document.getElementById('tela-minhas-os');
       if (sec && !sec.classList.contains('hidden')) await loadMyOsHistory();
     }
+
     alert(`OS criada com sucesso!`);
   } catch (err) {
     alert('Erro ao abrir OS: ' + err.message);
@@ -501,21 +497,18 @@ async function salvarAbastecimento() {
 }
 
 /* =========================
-   Dashboard (usa loadDashboard, que será definido adiante)
+   Dashboard (via API)
 ========================= */
 async function atualizarDashboard() {
   try {
     if (typeof loadDashboard === 'function') {
-      await loadDashboard(); // buscará /api/dashboard/summary quando a função estiver definida
+      await loadDashboard();
     }
   } catch (e) {
     console.warn('[atualizarDashboard] aviso:', e?.message || e);
   }
 }
 
-/* =========================
-   Helpers de "Últimas" (usados no layout legado; opcionais)
-========================= */
 function renderUltimasOS(container, dados) {
   if (!container) return;
   container.innerHTML = "";
@@ -544,39 +537,8 @@ function renderUltimasOS(container, dados) {
   container.appendChild(ul);
 }
 
-function renderUltimasREQ(container, dados) {
-  if (!container) return;
-  container.innerHTML = "";
-  if (!dados?.length) {
-    container.classList.add("empty-state");
-    container.textContent = "Sem registros";
-    return;
-  }
-  container.classList.remove("empty-state");
-
-  const ul = document.createElement("ul");
-  ul.className = "list-simples";
-
-  dados.slice(0, 5).forEach(req => {
-    const qtd  = (req.quantidade ?? req.unidade ?? "-");
-    const desc = req.descricao ? escapeHTML(req.descricao) : "";
-    const mat  = req.material ? escapeHTML(req.material)  : "";
-    const resumoDesc = desc ? (desc.length > 140 ? desc.slice(0, 140) + "..." : desc) : "";
-
-    const li = document.createElement("li");
-    li.innerHTML = `
-      <div><strong>${escapeHTML(req.id)}</strong> • ${escapeHTML(req.dataBR || "")} • ${mat} (${escapeHTML(String(qtd))})</div>
-      <div class="meta">Garagem: ${escapeHTML(req.garagem || "-")} • Frota: ${escapeHTML(req.frota || "")} • Solicitante: ${escapeHTML(req.solicitante || "")} • Status: ${escapeHTML(req.status || "")}</div>
-      ${resumoDesc ? `<div class="desc">${resumoDesc}</div>` : ""}
-    `;
-    ul.appendChild(li);
-  });
-
-  container.appendChild(ul);
-}
 /* =========================
    Tabelas completas (LEGADO – localStorage)
-   >> Mantidas para suas telas "Ver todos"
 ========================= */
 function renderizarTabelaOSCompleta() {
   const wrap = document.getElementById("tabela-completa-os");
@@ -715,7 +677,6 @@ function renderizarTabelaAbastecimentoCompleta() {
 
 /* =========================
    Ações (LEGADO – localStorage)
-   >> Mantidas para suas tabelas antigas
 ========================= */
 function alterarStatusOS(id, novo, indexFallback = -1) {
   let idx = ordensServico.findIndex(x => x.id === id);
@@ -781,7 +742,7 @@ function removerAbastecimento(id, indexFallback = -1) {
 }
 
 /* =========================
-   BUSCA nas telas "Ver todos" (LEGADO)
+   BUSCA nas telas “Ver todos” (LEGADO)
 ========================= */
 const BUSCA_STATE = { os: "", req: "", abast: "" };
 function norm(s) {
@@ -958,40 +919,13 @@ document.addEventListener("DOMContentLoaded", () => {
   const iREQ   = document.getElementById("busca-req");
   const iABAST = document.getElementById("busca-abast");
 
-  if (iOS) {
-    iOS.value = BUSCA_STATE.os;
-    iOS.addEventListener("input", () => { BUSCA_STATE.os = iOS.value; renderizarTabelaOSFiltrada(); });
-  }
-  if (iREQ) {
-    iREQ.value = BUSCA_STATE.req;
-    iREQ.addEventListener("input", () => { BUSCA_STATE.req = iREQ.value; renderizarTabelaREQFiltrada(); });
-  }
-  if (iABAST) {
-    iABAST.value = BUSCA_STATE.abast;
-    iABAST.addEventListener("input", () => { BUSCA_STATE.abast = iABAST.value; renderizarTabelaAbastecimentoFiltrada(); });
-  }
+  if (iOS)  iOS.addEventListener("input", () => { BUSCA_STATE.os = iOS.value; renderizarTabelaOSFiltrada(); });
+  if (iREQ) iREQ.addEventListener("input", () => { BUSCA_STATE.req = iREQ.value; renderizarTabelaREQFiltrada(); });
+  if (iABAST) iABAST.addEventListener("input", () => { BUSCA_STATE.abast = iABAST.value; renderizarTabelaAbastecimentoFiltrada(); });
 });
 
-/* ---- Wrappers p/ usar versões filtradas quando houver termo ---- */
-const _renderOSOriginal    = typeof renderizarTabelaOSCompleta === "function"    ? renderizarTabelaOSCompleta    : null;
-const _renderREQOriginal   = typeof renderizarTabelaREQCompleta === "function"   ? renderizarTabelaREQCompleta   : null;
-const _renderABASTOriginal = typeof renderizarTabelaAbastecimentoCompleta === "function" ? renderizarTabelaAbastecimentoCompleta : null;
-
-window.renderizarTabelaOSCompleta = function() {
-  if (BUSCA_STATE.os) return renderizarTabelaOSFiltrada();
-  if (_renderOSOriginal) return _renderOSOriginal();
-};
-window.renderizarTabelaREQCompleta = function() {
-  if (BUSCA_STATE.req) return renderizarTabelaREQFiltrada();
-  if (_renderREQOriginal) return _renderREQOriginal();
-};
-window.renderizarTabelaAbastecimentoCompleta = function() {
-  if (BUSCA_STATE.abast) return renderizarTabelaAbastecimentoFiltrada();
-  if (_renderABASTOriginal) return _renderABASTOriginal();
-};
-
 /* =========================
-   Event wiring (sem onclick inline) + Inicialização
+   Event wiring + Inicialização
 ========================= */
 document.addEventListener("DOMContentLoaded", async () => {
   // Nav por data-nav-target
@@ -999,7 +933,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     btn.addEventListener("click", () => alternarTelas(btn.dataset.navTarget));
   });
 
-  // Abrir modais por data-open-modal
+  // Abrir modais
   document.querySelectorAll("[data-open-modal]").forEach(btn => {
     btn.addEventListener("click", () => {
       const tipo = btn.dataset.openModal;
@@ -1009,7 +943,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     });
   });
 
-  // Fechar modais por data-close-modal
+  // Fechar modais
   document.querySelectorAll("[data-close-modal]").forEach(btn => {
     btn.addEventListener("click", () => {
       const modal = btn.closest(".modal-overlay");
@@ -1038,14 +972,14 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (document.getElementById("modalAbastecimento")?.classList.contains("active")) fecharModalAbastecimento();
   });
 
-  // Trap de foco (Tab/Shift+Tab) dentro dos modais
+  // Trap de foco
   ["modalOS", "modalRequisicao", "modalAbastecimento"].forEach(id => {
     const modal = document.getElementById(id);
     if (!modal) return;
     modal.addEventListener("keydown", (e) => { if (e.key === "Tab") trapFocus(modal, e); });
   });
 
-  // Submits por Enter dentro dos modais (evita quando foco está em select/textarea)
+  // Submits via Enter nas modais
   document.getElementById("modalOS")?.addEventListener("keydown", (e) => {
     if (e.key === "Enter") {
       const tag = document.activeElement?.tagName?.toLowerCase();
@@ -1068,17 +1002,16 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
   });
 
-  // Hooks dependentes de garagem (OS/REQ)
+  // Dependentes de garagem
   document.getElementById("selectGaragem")?.addEventListener("change", atualizarCamposPorGaragem);
   document.getElementById("selectGaragemReq")?.addEventListener("change", atualizarCamposReqPorGaragem);
 
-  // Submit buttons (1 handler cada)
+  // Botões submit
   document.querySelector("[data-submit-os]")?.addEventListener("click", salvarOS);
   document.querySelector("[data-submit-req]")?.addEventListener("click", salvarRequisicao);
   document.querySelector("[data-submit-abast]")?.addEventListener("click", salvarAbastecimento);
 
-  // ===== Inicialização =====
-  // Migração leve (IDs/status/unidade->quantidade) nos dados locais (legado)
+  // Migração leve (legado localStorage)
   let migrated = false;
   ordensServico = (ordensServico || []).map((o) => {
     const n = { ...o };
@@ -1102,16 +1035,15 @@ document.addEventListener("DOMContentLoaded", async () => {
     salvarLista(STORAGE_KEYS.REQ, requisicoes);
   }
 
-  // Selects iniciais (OS e REQ)
+  // Selects iniciais
   popularSelect("selectGaragem", bancoDeDados.garagens, "Escolha uma garagem...");
   popularTipoServico();
-  popularSelectsRequisicao(); // preenche apenas a garagem de REQ; frota/solicitante dependem
+  popularSelectsRequisicao();
 
-  // DATA padrão no modal de Requisição (hoje)
   const inputDataReq = document.getElementById("inputDataReq");
   if (inputDataReq && !inputDataReq.value) inputDataReq.value = toISODateString(new Date());
 
-  // Popular select de Frota no modal de Abastecimento
+  // Popular Frota no Abastecimento
   (function popularSelectFrotaAbastecimento() {
     const s = document.getElementById("selectFrotaAbast");
     if (!s) return;
@@ -1120,25 +1052,40 @@ document.addEventListener("DOMContentLoaded", async () => {
       frotas.map(f => `<option value="${f.prefixo}">${f.prefixo} • ${f.placa} • ${f.garagem}</option>`).join("");
   })();
 
-  // Pinta dashboard com dados reais (loadDashboard será definido abaixo – Parte 4/4)
-  await atualizarDashboard();
+  /* ======== TELA INICIAL POR PERFIL ======== */
+  try {
+    const me = await api('/api/auth/me');       // exige sessão
+    const role = me?.user?.role;
 
-  // Tela inicial (o Guard do motorista – Parte 4/4 – pode sobrepor para "Minhas OS")
-  alternarTelas('dashboard');
+    if (role === 'driver') {
+      // Esconde tudo de admin
+      document.querySelectorAll('.admin-only').forEach(el => {
+        el.style.display = 'none';
+        el.setAttribute('aria-hidden','true');
+      });
+      // Vai direto para “Minhas OS”
+      alternarTelas('minhas-os');
+
+      // Carrega a seção
+      if (typeof loadMyOsHistory === 'function') {
+        try { await loadMyOsHistory(); } catch(e) {}
+      }
+    } else {
+      // Admin → Dashboard
+      alternarTelas('dashboard');
+      try { await atualizarDashboard(); } catch(e) {}
+    }
+  } catch (e) {
+    // Sem sessão: fluxo normal leva para /auth
+  }
 });
-``
-/* =========================================================
-   API CONFIG + HELPERS (definidos uma única vez)
-   - Se front e API estão no MESMO host (Railway): API_URL = ''
-   - Se o front estiver na Vercel: use a URL pública da API do Railway
-========================================================= */
 
+/* =========================
+   API CONFIG + HELPERS
+========================= */
 // MESMO host (Railway serve front + API)
-const API_URL = '';
-// Se o front estiver na Vercel, use algo como:
-// const API_URL = 'https://sistematriunfo01-production.up.railway.app';
+const API_URL = ''; // se front for separado, aponte para a URL do backend
 
-// Helper para chamar API com cookie httpOnly
 async function api(path, options = {}) {
   const res = await fetch(`${API_URL}${path}`, {
     headers: { 'Content-Type': 'application/json' },
@@ -1151,21 +1098,16 @@ async function api(path, options = {}) {
   return data;
 }
 
-/* =========================================================
-   DASHBOARD: preenche cards e "ÚLTIMAS" via /api/dashboard/summary
-========================================================= */
 async function loadDashboard() {
   try {
     const summary = await api('/api/dashboard/summary');
 
-    // ---- OS: contadores
     const osCounts = summary?.os?.counts || {};
     setText('os-count-aberta',       osCounts.aberta    || 0);
     setText('os-count-em-andamento', osCounts.andamento || 0);
     setText('os-count-aguardando',   osCounts.aguardando|| 0);
     setText('os-count-concluida',    osCounts.concluida || 0);
 
-    // ---- "ÚLTIMAS OS"
     const ultimasOSBox = document.getElementById('lista-vazia');
     if (ultimasOSBox) {
       const items = summary?.os?.recent || [];
@@ -1184,7 +1126,6 @@ async function loadDashboard() {
       }
     }
 
-    // ---- REQUISIÇÕES (apenas admin recebe counts/recent; driver recebe null)
     const reqCounts = summary?.req?.counts;
     if (reqCounts) {
       setText('req-count-aberta',       reqCounts.aberta    || 0);
@@ -1210,72 +1151,14 @@ async function loadDashboard() {
         }
       }
     }
-
-    // (Opcional) summary.abast tem { totalReg, totalLitros, recent } – use se quiser exibir
   } catch (err) {
     console.error('[loadDashboard] erro:', err.message);
   }
 }
 
-/* =========================================================
-   GUARD DO MOTORISTA (driver)
-   - Esconde dashboard e itens .admin-only
-   - Leva para "Minhas OS"
-   - Lista apenas as OS do próprio login (back já filtra por createdBy)
-========================================================= */
-document.addEventListener('DOMContentLoaded', async () => {
-  try {
-    const me = await api('/api/auth/me'); // precisa estar logado
-    const role = me?.user?.role;
-
-    if (role === 'driver') {
-      // 1) Esconder itens de admin (menu e seções)
-      document.querySelectorAll('.admin-only').forEach(el => {
-        el.style.display = 'none';
-        el.setAttribute('aria-hidden','true');
-      });
-      // 2) Esconder botão/section de Dashboard
-      document.querySelectorAll('[data-nav-target="dashboard"]').forEach(el => el.style.display = 'none');
-      const dash = document.getElementById('tela-dashboard');
-      if (dash) dash.style.display = 'none';
-
-      // 3) Navegar para "Minhas OS"
-      if (typeof alternarTelas === 'function') alternarTelas('minhas-os');
-
-      // 4) Carregar a listagem "Minhas OS"
-      if (typeof loadMyOsHistory === 'function') {
-        await loadMyOsHistory();
-      } else {
-        // Fallback simples caso você não esteja usando o arquivo minhas-os.js
-        const box = document.getElementById('tabela-minhas-os');
-        if (box) {
-          box.textContent = 'Carregando...';
-          try {
-            const res = await api('/api/os?limit=100&page=1'); // o back já restringe por usuário
-            const items = res?.items || [];
-            if (!items.length) { box.textContent = 'Sem OS abertas por você.'; return; }
-            const ul = document.createElement('ul');
-            ul.style.margin = '0'; ul.style.paddingLeft = '16px';
-            items.forEach(r => {
-              const li = document.createElement('li');
-              li.textContent = `${r.id} — ${r.frota || '-'} — ${r.status}`;
-              ul.appendChild(li);
-            });
-            box.innerHTML = ''; box.appendChild(ul);
-          } catch (e) {
-            box.textContent = 'Erro ao carregar suas OS.';
-          }
-        }
-      }
-    }
-  } catch {
-    // Sem sessão – o fluxo normal te leva para /auth
-  }
-});
-
-/* =========================================================
-   LOGOUT (Sair do Sistema)
-========================================================= */
+/* =========================
+   LOGOUT
+========================= */
 document.addEventListener('DOMContentLoaded', () => {
   const btnLogout = document.getElementById('btnLogout');
   if (!btnLogout) return;
@@ -1301,68 +1184,9 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 });
 
-/* =========================================================
-   FAILSAFE de navegação e modais por delegação de eventos
-   (funciona mesmo que algum listener não tenha sido anexado)
-========================================================= */
-document.addEventListener('click', (ev) => {
-  const t = ev.target;
-
-  // Navegação entre telas
-  const navBtn = t.closest('[data-nav-target]');
-  if (navBtn) {
-    const tela = navBtn.getAttribute('data-nav-target');
-    try { window.alternarTelas && window.alternarTelas(tela); } catch(e) {}
-    return;
-  }
-
-  // Abrir modais
-  const openBtn = t.closest('[data-open-modal]');
-  if (openBtn) {
-    const tipo = openBtn.getAttribute('data-open-modal');
-    try {
-      if (tipo === 'os')    window.abrirModal && window.abrirModal();
-      if (tipo === 'req')   window.abrirModalRequisicao && window.abrirModalRequisicao();
-      if (tipo === 'abast') window.abrirModalAbastecimento && window.abrirModalAbastecimento();
-    } catch(e) {}
-    return;
-  }
-
-  // Fechar modais
-  const closeBtn = t.closest('[data-close-modal]');
-  if (closeBtn) {
-    const modal = closeBtn.closest('.modal-overlay');
-    try {
-      if (modal?.id === 'modalOS')             window.fecharModal && window.fecharModal();
-      if (modal?.id === 'modalRequisicao')     window.fecharModalRequisicao && window.fecharModalRequisicao();
-      if (modal?.id === 'modalAbastecimento')  window.fecharModalAbastecimento && window.fecharModalAbastecimento();
-    } catch(e) {}
-    return;
-  }
-
-  // Failsafe de logout
-  const logoutBtn = t.closest('#btnLogout');
-  if (logoutBtn) {
-    ev.preventDefault();
-    (async () => {
-      try { await api('/api/auth/logout', { method: 'POST', body: JSON.stringify({}) }); } catch {}
-      window.location.href = '/auth';
-    })();
-  }
-});
-
-/* =========================================================
-   Expor no window (compat)
-========================================================= */
-window.alternarTelas = window.alternarTelas || alternarTelas;
-window.abrirModal = window.abrirModal || abrirModal;
-window.fecharModal = window.fecharModal || fecharModal;
-window.abrirModalRequisicao = window.abrirModalRequisicao || abrirModalRequisicao;
-window.fecharModalRequisicao = window.fecharModalRequisicao || fecharModalRequisicao;
-window.abrirModalAbastecimento = window.abrirModalAbastecimento || abrirModalAbastecimento;
-window.fecharModalAbastecimento = window.fecharModalAbastecimento || fecharModalAbastecimento;
-``
-/* === MOBILE MENU TOGGLER === */
+/* =========================
+   MOBILE MENU (☰) – abrir/fechar sidebar
+========================= */
 document.addEventListener('DOMContentLoaded', () => {
   const btn = document.getElementById('btnMobileMenu');
   const backdrop = document.getElementById('sidebarBackdrop');
@@ -1372,17 +1196,30 @@ document.addEventListener('DOMContentLoaded', () => {
   const openMenu = () => {
     document.body.classList.add('sidebar-open');
     backdrop.hidden = false;
+    btn.setAttribute('aria-expanded', 'true');
   };
-
   const closeMenu = () => {
     document.body.classList.remove('sidebar-open');
     backdrop.hidden = true;
+    btn.setAttribute('aria-expanded', 'false');
   };
 
   btn.addEventListener('click', () => {
     const isOpen = document.body.classList.contains('sidebar-open');
     isOpen ? closeMenu() : openMenu();
   });
-
   backdrop.addEventListener('click', closeMenu);
+
+  // Fecha ao navegar no menu (apenas no mobile)
+  document.querySelector('.menu-items')?.addEventListener('click', (ev) => {
+    const item = ev.target.closest('button,[role="menuitem"]');
+    if (!item) return;
+    if (window.matchMedia('(max-width: 1024px)').matches) closeMenu();
+  });
+
+  // Se voltar para desktop, garante fechado
+  window.addEventListener('resize', () => {
+    if (!window.matchMedia('(max-width: 1024px)').matches) closeMenu();
+  });
 });
+``
