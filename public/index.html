@@ -9,7 +9,7 @@
   <!-- CSS principal do app -->
   <link rel="stylesheet" href="/style.css" />
 
-  <!-- CSS complementar da seção "Minhas OS" (ETAPA C) -->
+  <!-- CSS moderno para Minhas OS / Listagem OS -->
   <link rel="stylesheet" href="/css/myos.css" />
 
   <!-- Fallback mínimo -->
@@ -20,369 +20,358 @@
 <body>
   <div class="app-container">
 
-    <!-- SIDEBAR -->
-    <nav class="sidebar" aria-label="Menu principal">
-      <div class="sidebar-logo">
-        <img src="/logo.jpeg" alt="Triunfo" style="max-width: 100%; height: auto;" />
-      </div>
+<!-- ============================
+     TOPBAR MOBILE
+=============================== -->
+<header class="app-topbar">
+  <button id="btnMobileMenu" class="btn-menu"
+    aria-label="Abrir menu"
+    aria-controls="sidebar"
+    aria-expanded="false">☰</button>
+  <div class="topbar-title">Triunfo System</div>
+</header>
 
-      <div class="menu-items" role="menu">
-        <!-- Dashboard (ADMIN) -->
-        <button class="admin-only" data-nav-target="dashboard" role="menuitem">📊 Dashboard</button>
-
-        <!-- Visível para DRIVER e ADMIN -->
-        <button data-open-modal="os" role="menuitem">📝 Abrir OS</button>
-
-        <!-- Minhas OS (driver vê histórico próprio) -->
-        <button data-nav-target="minhas-os" role="menuitem">📋 Minhas OS</button>
-
-        <!-- Somente ADMIN -->
-        <button class="admin-only" data-open-modal="req" role="menuitem">📦 Nova Requisição</button>
-        <button class="admin-only" data-open-modal="abast" role="menuitem">⛽ Abastecimento</button>
-        <button class="admin-only" data-nav-target="listagem-abast" role="menuitem">🧾 Histórico Abastecimentos</button>
-        <button class="admin-only" role="menuitem">🚚 Motoristas</button>
-        <button class="admin-only" role="menuitem">⚙️ Configurações</button>
-      </div>
-
-      <button id="btnLogout" class="btn-exit" type="button">Sair do Sistema</button>
-    </nav>
-
-    <!-- CONTEÚDO PRINCIPAL -->
-    <main class="main-content" id="conteudo" tabindex="-1">
-      <!-- DASHBOARD (ADMIN) -->
-      <section id="tela-dashboard" class="admin-only" aria-labelledby="titulo-dashboard">
-        <h1 id="titulo-dashboard" class="section-title">OS — STATUS</h1>
-
-        <div class="status-grid" role="list" aria-label="Status de OS">
-          <article class="status-card" role="listitem" aria-labelledby="lbl-os-aberta">
-            <div class="status-card-head">
-              <span id="lbl-os-aberta" class="status-label">Aberta</span>
-              <span class="status-icon status-open" aria-hidden="true">📁</span>
-            </div>
-            <div class="status-value" id="os-count-aberta" aria-live="polite">0</div>
-          </article>
-
-          <article class="status-card" role="listitem" aria-labelledby="lbl-os-andamento">
-            <div class="status-card-head">
-              <span id="lbl-os-andamento" class="status-label">Em andamento</span>
-              <span class="status-icon status-andamento" aria-hidden="true">🔧</span>
-            </div>
-            <div class="status-value" id="os-count-em-andamento" aria-live="polite">0</div>
-          </article>
-
-          <article class="status-card" role="listitem" aria-labelledby="lbl-os-aguardando">
-            <div class="status-card-head">
-              <span id="lbl-os-aguardando" class="status-label">Aguardando</span>
-              <span class="status-icon status-aguardando" aria-hidden="true">🕒</span>
-            </div>
-            <div class="status-value" id="os-count-aguardando" aria-live="polite">0</div>
-          </article>
-
-          <article class="status-card" role="listitem" aria-labelledby="lbl-os-concluida">
-            <div class="status-card-head">
-              <span id="lbl-os-concluida" class="status-label">Concluída</span>
-              <span class="status-icon status-concluida" aria-hidden="true">✅</span>
-            </div>
-            <div class="status-value" id="os-count-concluida" aria-live="polite">0</div>
-          </article>
-        </div>
-
-        <!-- REQUISIÇÕES (ADMIN) -->
-        <h2 class="section-title admin-only">REQUISIÇÕES — STATUS</h2>
-        <div class="status-grid admin-only" role="list" aria-label="Status de Requisições">
-          <article class="status-card" role="listitem" aria-labelledby="lbl-req-aberta">
-            <div class="status-card-head">
-              <span id="lbl-req-aberta" class="status-label">Aberta</span>
-              <span class="status-icon status-open" aria-hidden="true">📁</span>
-            </div>
-            <div class="status-value" id="req-count-aberta" aria-live="polite">0</div>
-          </article>
-          <article class="status-card" role="listitem" aria-labelledby="lbl-req-andamento">
-            <div class="status-card-head">
-              <span id="lbl-req-andamento" class="status-label">Em andamento</span>
-              <span class="status-icon status-andamento" aria-hidden="true">🔧</span>
-            </div>
-            <div class="status-value" id="req-count-em-andamento" aria-live="polite">0</div>
-          </article>
-          <article class="status-card" role="listitem" aria-labelledby="lbl-req-aguardando">
-            <div class="status-card-head">
-              <span id="lbl-req-aguardando" class="status-label">Aguardando</span>
-              <span class="status-icon status-aguardando" aria-hidden="true">🕒</span>
-            </div>
-            <div class="status-value" id="req-count-aguardando" aria-live="polite">0</div>
-          </article>
-          <article class="status-card" role="listitem" aria-labelledby="lbl-req-concluida">
-            <div class="status-card-head">
-              <span id="lbl-req-concluida" class="status-label">Concluída</span>
-              <span class="status-icon status-concluida" aria-hidden="true">✅</span>
-            </div>
-            <div class="status-value" id="req-count-concluida" aria-live="polite">0</div>
-          </article>
-        </div>
-
-        <!-- RESUMOS -->
-        <div class="resumo-container">
-          <!-- ÚLTIMAS OS -->
-          <section class="card-largo" aria-labelledby="ultimas-os-titulo">
-            <div class="card-largo-header">
-              <div id="ultimas-os-titulo" class="title-wrap"><span aria-hidden="true">📋</span> ÚLTIMAS OS</div>
-              <button class="link-ver-todas link-ver-todas--plain admin-only" type="button" data-nav-target="listagem-os">Ver todas</button>
-            </div>
-            <div id="lista-vazia" class="empty-state" aria-live="polite">Sem registros</div>
-          </section>
-
-          <!-- ÚLTIMAS REQUISIÇÕES (ADMIN) -->
-          <section class="card-largo admin-only" aria-labelledby="ultimas-req-titulo">
-            <div class="card-largo-header">
-              <div id="ultimas-req-titulo" class="title-wrap"><span aria-hidden="true">📦</span> ÚLTIMAS REQUISIÇÕES</div>
-              <button class="link-ver-todas link-ver-todas--plain" type="button" data-nav-target="listagem-req">Ver todas</button>
-            </div>
-            <div id="lista-requisicoes" class="empty-state" aria-live="polite">Sem registros</div>
-          </section>
-        </div>
-      </section>
-
-      <!-- LISTAGEM COMPLETA OS (ADMIN) -->
-      <section id="tela-listagem-os" class="hidden admin-only" aria-labelledby="titulo-listagem-os">
-        <header class="top-bar">
-          <form class="search-box" role="search" aria-label="Buscar OS">
-            <label class="sr-only" for="busca-os">Buscar</label>
-            <input id="busca-os" type="search" placeholder="Buscar OS por ID, garagem, motorista, frota, tipo..." />
-            <button class="btn-filter" type="button" data-open-filtros>Filtro</button>
-          </form>
-        </header>
-
-        <div class="card-largo-header">
-          <h2 id="titulo-listagem-os" class="section-title">📋 HISTÓRICO COMPLETO DE OS</h2>
-          <button class="btn-filter" type="button" data-nav-target="dashboard">Voltar ao Dashboard</button>
-        </div>
-        <div class="card-largo" id="tabela-completa-os" role="region" aria-live="polite"></div>
-      </section>
-
-      <!-- LISTAGEM COMPLETA REQ (ADMIN) -->
-      <section id="tela-listagem-req" class="hidden admin-only" aria-labelledby="titulo-listagem-req">
-        <header class="top-bar">
-          <form class="search-box" role="search" aria-label="Buscar Requisições">
-            <label class="sr-only" for="busca-req">Buscar</label>
-            <input id="busca-req" type="search" placeholder="Buscar REQ por ID, material, garagem, frota, solicitante..." />
-            <button class="btn-filter" type="button" data-open-filtros>Filtro</button>
-          </form>
-        </header>
-
-        <div class="card-largo-header">
-          <h2 id="titulo-listagem-req" class="section-title">📦 HISTÓRICO COMPLETO DE REQUISIÇÕES</h2>
-          <button class="btn-filter" type="button" data-nav-target="dashboard">Voltar ao Dashboard</button>
-        </div>
-        <div class="card-largo" id="tabela-completa-req" role="region" aria-live="polite"></div>
-      </section>
-
-      <!-- LISTAGEM COMPLETA ABASTECIMENTO (ADMIN) -->
-      <section id="tela-listagem-abast" class="hidden admin-only" aria-labelledby="titulo-listagem-abast">
-        <header class="top-bar">
-          <form class="search-box" role="search" aria-label="Buscar Abastecimentos">
-            <label class="sr-only" for="busca-abast">Buscar</label>
-            <input id="busca-abast" type="search" placeholder="Buscar Abastecimento por ID, frota, placa, garagem..." />
-            <button class="btn-filter" type="button" data-open-filtros>Filtro</button>
-          </form>
-        </header>
-
-        <div class="card-largo-header">
-          <h2 id="titulo-listagem-abast" class="section-title">⛽ HISTÓRICO COMPLETO DE ABASTECIMENTOS</h2>
-          <button class="btn-filter" type="button" data-nav-target="dashboard">Voltar ao Dashboard</button>
-        </div>
-        <div class="card-largo" id="tabela-completa-abast" role="region" aria-live="polite"></div>
-      </section>
-
-      <!-- MINHAS OS (DRIVER/ADMIN; driver verá apenas as próprias) -->
-      <section id="tela-minhas-os" class="hidden" aria-labelledby="titulo-minhas-os">
-        <header class="top-bar">
-          <h2 id="titulo-minhas-os" class="section-title">📋 Minhas OS</h2>
-          <button class="btn-filter admin-only" type="button" data-nav-target="dashboard">Voltar ao Dashboard</button>
-        </header>
-
-        <div class="card-largo" id="tabela-minhas-os" role="region" aria-live="polite">Carregando...</div>
-      </section>
-    </main>
+<!-- ============================
+     SIDEBAR (AGORA COM ID="sidebar")
+=============================== -->
+<nav id="sidebar" class="sidebar" aria-label="Menu principal">
+  <div class="sidebar-logo">
+    <img src="/logo.jpeg" alt="Triunfo" style="max-width: 100%; height: auto;" />
   </div>
 
-  <!-- MODAIS -->
-  <!-- MODAL OS -->
-  <div class="modal-overlay" id="modalOS" data-modal role="dialog" aria-modal="true" aria-labelledby="titulo-modal-os">
-    <div class="modal-container" role="document">
-      <div class="modal-header">
-        <div class="modal-title">
-          <div class="icon-box-red" aria-hidden="true">📋</div>
-          <h2 id="titulo-modal-os">ABRIR OS</h2>
+  <div class="menu-items" role="menu">
+    <button class="admin-only" data-nav-target="dashboard" role="menuitem">📊 Dashboard</button>
+    <button data-open-modal="os" role="menuitem">📝 Abrir OS</button>
+    <button data-nav-target="minhas-os" role="menuitem">📋 Minhas OS</button>
+    <button class="admin-only" data-open-modal="req" role="menuitem">📦 Nova Requisição</button>
+    <button class="admin-only" data-open-modal="abast" role="menuitem">⛽ Abastecimento</button>
+    <button class="admin-only" data-nav-target="listagem-abast" role="menuitem">🧾 Histórico Abastecimentos</button>
+    <button class="admin-only" role="menuitem">🚚 Motoristas</button>
+    <button class="admin-only" role="menuitem">⚙️ Configurações</button>
+  </div>
+
+  <button id="btnLogout" class="btn-exit">Sair do Sistema</button>
+</nav>
+
+<!-- ============================
+     BACKDROP MOBILE (DEPOIS DO NAV)
+=============================== -->
+<div id="sidebarBackdrop" class="sidebar-backdrop" hidden></div>
+
+<!-- ============================
+     MAIN CONTENT
+=============================== -->
+<main class="main-content" id="conteudo" tabindex="-1">
+
+  <!-- DASHBOARD -->
+  <section id="tela-dashboard" class="admin-only" aria-labelledby="titulo-dashboard">
+    <h1 id="titulo-dashboard" class="section-title">OS — STATUS</h1>
+
+    <div class="status-grid" role="list" aria-label="Status de OS">
+      <article class="status-card" role="listitem">
+        <div class="status-card-head">
+          <span class="status-label">Aberta</span>
+          <span class="status-icon status-open">📁</span>
         </div>
-        <button class="close-x" type="button" data-close-modal aria-label="Fechar">&times;</button>
+        <div class="status-value" id="os-count-aberta">0</div>
+      </article>
+
+      <article class="status-card" role="listitem">
+        <div class="status-card-head">
+          <span class="status-label">Em andamento</span>
+          <span class="status-icon status-andamento">🔧</span>
+        </div>
+        <div class="status-value" id="os-count-em-andamento">0</div>
+      </article>
+
+      <article class="status-card" role="listitem">
+        <div class="status-card-head">
+          <span class="status-label">Aguardando</span>
+          <span class="status-icon status-aguardando">🕒</span>
+        </div>
+        <div class="status-value" id="os-count-aguardando">0</div>
+      </article>
+
+      <article class="status-card" role="listitem">
+        <div class="status-card-head">
+          <span class="status-label">Concluída</span>
+          <span class="status-icon status-concluida">✅</span>
+        </div>
+        <div class="status-value" id="os-count-concluida">0</div>
+      </article>
+    </div>
+
+    <h2 class="section-title admin-only">REQUISIÇÕES — STATUS</h2>
+    <div class="status-grid admin-only">
+      <article class="status-card">
+        <div class="status-card-head">
+          <span class="status-label">Aberta</span>
+          <span class="status-icon status-open">📁</span>
+        </div>
+        <div class="status-value" id="req-count-aberta">0</div>
+      </article>
+
+      <article class="status-card">
+        <div class="status-card-head">
+          <span class="status-label">Em andamento</span>
+          <span class="status-icon status-andamento">🔧</span>
+        </div>
+        <div class="status-value" id="req-count-em-andamento">0</div>
+      </article>
+
+      <article class="status-card">
+        <div class="status-card-head">
+          <span class="status-label">Aguardando</span>
+          <span class="status-icon status-aguardando">🕒</span>
+        </div>
+        <div class="status-value" id="req-count-aguardando">0</div>
+      </article>
+
+      <article class="status-card">
+        <div class="status-card-head">
+          <span class="status-label">Concluída</span>
+          <span class="status-icon status-concluida">✅</span>
+        </div>
+        <div class="status-value" id="req-count-concluida">0</div>
+      </article>
+    </div>
+
+    <div class="resumo-container">
+
+      <section class="card-largo">
+        <div class="card-largo-header">
+          <div class="title-wrap">📋 ÚLTIMAS OS</div>
+          <button class="link-ver-todas link-ver-todas--plain admin-only" data-nav-target="listagem-os">Ver todas</button>
+        </div>
+        <div id="lista-vazia">Sem registros</div>
+      </section>
+
+      <section class="card-largo admin-only">
+        <div class="card-largo-header">
+          <div class="title-wrap">📦 ÚLTIMAS REQUISIÇÕES</div>
+          <button class="link-ver-todas link-ver-todas--plain" data-nav-target="listagem-req">Ver todas</button>
+        </div>
+        <div id="lista-requisicoes">Sem registros</div>
+      </section>
+
+    </div>
+  </section>
+
+  <!-- LISTAGEM COMPLETA OS -->
+  <section id="tela-listagem-os" class="hidden admin-only">
+    <h2>📋 HISTÓRICO COMPLETO DE OS</h2>
+    <div id="tabela-completa-os"></div>
+  </section>
+
+  <!-- LISTAGEM COMPLETA REQUISIÇÕES -->
+  <section id="tela-listagem-req" class="hidden admin-only">
+    <h2>📦 HISTÓRICO COMPLETO DE REQUISIÇÕES</h2>
+    <div id="tabela-completa-req"></div>
+  </section>
+
+  <!-- LISTAGEM COMPLETA ABASTECIMENTOS -->
+  <section id="tela-listagem-abast" class="hidden admin-only">
+    <h2>⛽ HISTÓRICO COMPLETO DE ABASTECIMENTOS</h2>
+    <div id="tabela-completa-abast"></div>
+  </section>
+
+  <!-- MINHAS OS -->
+  <section id="tela-minhas-os" class="hidden">
+    <h2>📋 Minhas OS</h2>
+    <div id="tabela-minhas-os">Carregando...</div>
+  </section>
+
+</main>
+</div>
+
+<!-- ============================
+     AGORA VÊM AS MODAIS
+=============================== -->
+``
+<!-- ============================
+     MODAIS
+=============================== -->
+
+<!-- MODAL OS -->
+<div class="modal-overlay" id="modalOS" data-modal role="dialog" aria-modal="true" aria-labelledby="titulo-modal-os">
+  <div class="modal-container" role="document">
+    <div class="modal-header">
+      <div class="modal-title">
+        <div class="icon-box-red" aria-hidden="true">📋</div>
+        <h2 id="titulo-modal-os">ABRIR OS</h2>
+      </div>
+      <button class="close-x" type="button" data-close-modal aria-label="Fechar">&times;</button>
+    </div>
+
+    <div class="modal-body">
+      <div class="form-group">
+        <label for="selectGaragem">GARAGEM</label>
+        <select id="selectGaragem" name="garagem">
+          <option value="">Escolha uma garagem...</option>
+        </select>
       </div>
 
-      <div class="modal-body">
-        <div class="form-group">
-          <label for="selectGaragem">GARAGEM</label>
-          <select id="selectGaragem" name="garagem">
-            <option value="">Escolha uma garagem...</option>
-          </select>
-        </div>
-
-        <div class="form-group">
-          <label for="selectMotorista">MOTORISTA</label>
-          <select id="selectMotorista" name="motorista">
-            <option value="">Selecione a garagem primeiro...</option>
-          </select>
-        </div>
-
-        <div class="form-group">
-          <label for="selectFrota">FROTA (PREFIXO)</label>
-          <select id="selectFrota" name="frota">
-            <option value="">Selecione a garagem primeiro...</option>
-          </select>
-        </div>
-
-        <div class="form-group">
-          <label for="inputKM">KM</label>
-          <input type="number" id="inputKM" name="km" inputmode="numeric" placeholder="Ex: 45000" min="0" step="1">
-        </div>
-
-        <div class="form-group">
-          <label for="selectTipoServico">TIPO DE SERVIÇO</label>
-          <select id="selectTipoServico" name="tipoServico"></select>
-        </div>
-
-        <div class="form-group">
-          <label for="textoDescricao">DESCRIÇÃO DO PROBLEMA</label>
-          <textarea id="textoDescricao" name="descricao" placeholder="Relate o problema aqui..." rows="3"></textarea>
-        </div>
+      <div class="form-group">
+        <label for="selectMotorista">MOTORISTA</label>
+        <select id="selectMotorista" name="motorista">
+          <option value="">Selecione a garagem primeiro...</option>
+        </select>
       </div>
 
-      <div class="modal-footer">
-        <button class="btn-modal-cancel" type="button" data-close-modal>Cancelar</button>
-        <button class="btn-modal-submit" type="button" data-submit-os>ABRIR OS</button>
+      <div class="form-group">
+        <label for="selectFrota">FROTA (PREFIXO)</label>
+        <select id="selectFrota" name="frota">
+          <option value="">Selecione a garagem primeiro...</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label for="inputKM">KM</label>
+        <input type="number" id="inputKM" name="km" inputmode="numeric" placeholder="Ex: 45000" min="0" step="1">
+      </div>
+
+      <div class="form-group">
+        <label for="selectTipoServico">TIPO DE SERVIÇO</label>
+        <select id="selectTipoServico" name="tipoServico"></select>
+      </div>
+
+      <div class="form-group">
+        <label for="textoDescricao">DESCRIÇÃO DO PROBLEMA</label>
+        <textarea id="textoDescricao" name="descricao" placeholder="Relate o problema aqui..." rows="3"></textarea>
       </div>
     </div>
-  </div>
 
-  <!-- MODAL REQUISIÇÃO (ADMIN) -->
-  <div class="modal-overlay admin-only" id="modalRequisicao" data-modal role="dialog" aria-modal="true" aria-labelledby="titulo-modal-req">
-    <div class="modal-container modal--small" role="document">
-      <div class="modal-header">
-        <div class="modal-title">
-          <div class="icon-box-red" aria-hidden="true">📥</div>
-          <h2 id="titulo-modal-req">REQUISIÇÃO</h2>
-        </div>
-        <button class="close-x" type="button" data-close-modal aria-label="Fechar">&times;</button>
-      </div>
-
-      <div class="modal-body">
-        <div class="form-group">
-          <label for="inputMaterial">MATERIAL</label>
-          <input type="text" id="inputMaterial" name="material" placeholder="Digite aqui...">
-        </div>
-
-        <div class="form-group">
-          <label for="inputQuantidade">QUANTIDADE</label>
-          <input type="number" id="inputQuantidade" name="quantidade" placeholder="Ex.: 2" min="1" step="1" inputmode="numeric">
-        </div>
-
-        <div class="form-group">
-          <label for="selectGaragemReq">GARAGEM</label>
-          <select id="selectGaragemReq" name="garagemReq">
-            <option value="">Escolha uma garagem...</option>
-          </select>
-        </div>
-
-        <div class="form-group">
-          <label for="selectFrotaReq">FROTA</label>
-          <select id="selectFrotaReq" name="frotaReq">
-            <option value="">Selecione a garagem primeiro...</option>
-          </select>
-        </div>
-
-        <div class="form-group">
-          <label for="selectSolicitanteReq">SOLICITANTE</label>
-          <select id="selectSolicitanteReq" name="solicitanteReq">
-            <option value="">Selecione a garagem primeiro...</option>
-          </select>
-        </div>
-
-        <div class="form-group">
-          <label for="inputDataReq">DATA</label>
-          <input type="date" id="inputDataReq" name="dataReq">
-        </div>
-
-        <div class="form-group">
-          <label for="inputCodigoReq">CÓDIGO</label>
-          <input type="text" id="inputCodigoReq" name="codigoReq" placeholder="Digite aqui...">
-        </div>
-
-        <div class="form-group">
-          <label for="textoDescricaoReq">DESCRIÇÃO</label>
-          <textarea id="textoDescricaoReq" name="descricaoReq" placeholder="Digite aqui..." rows="3"></textarea>
-        </div>
-      </div>
-
-      <div class="modal-footer">
-        <button class="btn-modal-cancel" type="button" data-close-modal>CANCELAR</button>
-        <button class="btn-modal-submit" type="button" data-submit-req style="background:#E61414;">REQUISITAR</button>
-      </div>
+    <div class="modal-footer">
+      <button class="btn-modal-cancel" type="button" data-close-modal>Cancelar</button>
+      <button class="btn-modal-submit" type="button" data-submit-os>ABRIR OS</button>
     </div>
   </div>
+</div>
 
-  <!-- MODAL ABASTECIMENTO (ADMIN) -->
-  <div class="modal-overlay admin-only" id="modalAbastecimento" data-modal role="dialog" aria-modal="true" aria-labelledby="titulo-modal-abast">
-    <div class="modal-container" role="document">
-      <div class="modal-header">
-        <div class="modal-title">
-          <div class="icon-box-red" aria-hidden="true">⛽</div>
-          <h2 id="titulo-modal-abast">ABASTECIMENTO</h2>
-        </div>
-        <button class="close-x" type="button" data-close-modal aria-label="Fechar">&times;</button>
+<!-- MODAL REQUISIÇÃO (ADMIN) -->
+<div class="modal-overlay admin-only" id="modalRequisicao" data-modal role="dialog" aria-modal="true" aria-labelledby="titulo-modal-req">
+  <div class="modal-container modal--small" role="document">
+    <div class="modal-header">
+      <div class="modal-title">
+        <div class="icon-box-red" aria-hidden="true">📥</div>
+        <h2 id="titulo-modal-req">REQUISIÇÃO</h2>
+      </div>
+      <button class="close-x" type="button" data-close-modal aria-label="Fechar">&times;</button>
+    </div>
+
+    <div class="modal-body">
+      <div class="form-group">
+        <label for="inputMaterial">MATERIAL</label>
+        <input type="text" id="inputMaterial" name="material" placeholder="Digite aqui...">
       </div>
 
-      <div class="modal-body">
-        <div class="form-group">
-          <label for="inputDataHoraAbast">DATA E HORA</label>
-          <input type="datetime-local" id="inputDataHoraAbast" name="dataHoraAbast">
-        </div>
-
-        <div class="form-group">
-          <label for="selectFrotaAbast">FROTA</label>
-          <select id="selectFrotaAbast" name="frotaAbast">
-            <option value="">Selecione...</option>
-          </select>
-        </div>
-
-        <div class="form-group">
-          <label for="inputKMVeiculoAbast">KM DO VEÍCULO</label>
-          <input type="number" id="inputKMVeiculoAbast" name="kmVeiculoAbast" placeholder="Ex.: 45210" min="0" step="1" inputmode="numeric">
-        </div>
-
-        <div class="form-group">
-          <label for="inputKMInicioBomba">KM INICIAL DA BOMBA</label>
-          <input type="number" id="inputKMInicioBomba" name="kmInicioBomba" placeholder="Ex.: 12000.0" min="0" step="0.001" inputmode="decimal">
-        </div>
-
-        <div class="form-group">
-          <label for="inputKMFimBomba">KM FINAL DA BOMBA</label>
-          <input type="number" id="inputKMFimBomba" name="kmFimBomba" placeholder="Ex.: 12035.5" min="0" step="0.001" inputmode="decimal">
-        </div>
-
-        <div class="form-group">
-          <label for="inputQuantidadeLitros">QUANTIDADE (L)</label>
-          <input type="number" id="inputQuantidadeLitros" name="quantidadeLitros" placeholder="Ex.: 35.5" min="0.001" step="0.001" inputmode="decimal">
-        </div>
+      <div class="form-group">
+        <label for="inputQuantidade">QUANTIDADE</label>
+        <input type="number" id="inputQuantidade" name="quantidade" placeholder="Ex.: 2" min="1" step="1" inputmode="numeric">
       </div>
 
-      <div class="modal-footer">
-        <button class="btn-modal-cancel" type="button" data-close-modal>CANCELAR</button>
-        <button class="btn-modal-submit" type="button" data-submit-abast>REGISTRAR</button>
+      <div class="form-group">
+        <label for="selectGaragemReq">GARAGEM</label>
+        <select id="selectGaragemReq" name="garagemReq">
+          <option value="">Escolha uma garagem...</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label for="selectFrotaReq">FROTA</label>
+        <select id="selectFrotaReq" name="frotaReq">
+          <option value="">Selecione a garagem primeiro...</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label for="selectSolicitanteReq">SOLICITANTE</label>
+        <select id="selectSolicitanteReq" name="solicitanteReq">
+          <option value="">Selecione a garagem primeiro...</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label for="inputDataReq">DATA</label>
+        <input type="date" id="inputDataReq" name="dataReq">
+      </div>
+
+      <div class="form-group">
+        <label for="inputCodigoReq">CÓDIGO</label>
+        <input type="text" id="inputCodigoReq" name="codigoReq" placeholder="Digite aqui...">
+      </div>
+
+      <div class="form-group">
+        <label for="textoDescricaoReq">DESCRIÇÃO</label>
+        <textarea id="textoDescricaoReq" name="descricaoReq" placeholder="Digite aqui..." rows="3"></textarea>
       </div>
     </div>
-  </div>
 
-  <!-- SCRIPTS (ordem correta) -->
-    <script src="/script.js" defer></script>
-    <script src="/js/minhas-os.js" defer></script>
-    <script src="/js/admin-os.js" defer></script>
-  </body>
+    <div class="modal-footer">
+      <button class="btn-modal-cancel" type="button" data-close-modal>CANCELAR</button>
+      <button class="btn-modal-submit" type="button" data-submit-req style="background:#E61414;">REQUISITAR</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL ABASTECIMENTO (ADMIN) -->
+<div class="modal-overlay admin-only" id="modalAbastecimento" data-modal role="dialog" aria-modal="true" aria-labelledby="titulo-modal-abast">
+  <div class="modal-container" role="document">
+    <div class="modal-header">
+      <div class="modal-title">
+        <div class="icon-box-red" aria-hidden="true">⛽</div>
+        <h2 id="titulo-modal-abast">ABASTECIMENTO</h2>
+      </div>
+      <button class="close-x" type="button" data-close-modal aria-label="Fechar">&times;</button>
+    </div>
+
+    <div class="modal-body">
+      <div class="form-group">
+        <label for="inputDataHoraAbast">DATA E HORA</label>
+        <input type="datetime-local" id="inputDataHoraAbast" name="dataHoraAbast">
+      </div>
+
+      <div class="form-group">
+        <label for="selectFrotaAbast">FROTA</label>
+        <select id="selectFrotaAbast" name="frotaAbast">
+          <option value="">Selecione...</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label for="inputKMVeiculoAbast">KM DO VEÍCULO</label>
+        <input type="number" id="inputKMVeiculoAbast" name="kmVeiculoAbast" placeholder="Ex.: 45210" min="0" step="1" inputmode="numeric">
+      </div>
+
+      <div class="form-group">
+        <label for="inputKMInicioBomba">KM INICIAL DA BOMBA</label>
+        <input type="number" id="inputKMInicioBomba" name="kmInicioBomba" placeholder="Ex.: 12000.0" min="0" step="0.001" inputmode="decimal">
+      </div>
+
+      <div class="form-group">
+        <label for="inputKMFimBomba">KM FINAL DA BOMBA</label>
+        <input type="number" id="inputKMFimBomba" name="kmFimBomba" placeholder="Ex.: 12035.5" min="0" step="0.001" inputmode="decimal">
+      </div>
+
+      <div class="form-group">
+        <label for="inputQuantidadeLitros">QUANTIDADE (L)</label>
+        <input type="number" id="inputQuantidadeLitros" name="quantidadeLitros" placeholder="Ex.: 35.5" min="0.001" step="0.001" inputmode="decimal">
+      </div>
+    </div>
+
+    <div class="modal-footer">
+      <button class="btn-modal-cancel" type="button" data-close-modal>CANCELAR</button>
+      <button class="btn-modal-submit" type="button" data-submit-abast>REGISTRAR</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============================
+     SCRIPTS (ORDEM CORRETA)
+=============================== -->
+<script src="/script.js" defer></script>
+<script src="/js/minhas-os.js" defer></script>
+<script src="/js/admin-os.js" defer></script>
+
+</body>
 </html>

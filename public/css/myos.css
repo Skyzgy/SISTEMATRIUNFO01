@@ -1,201 +1,224 @@
-/* public/css/myos.css
-   ESTILO PROFISSIONAL + IDENTIDADE VISUAL TRIUNFO (#E61414)
-*/
+/* =========================================================
+   Triunfo System - myos.css (COMPLETO)
+   Seções cobertas:
+   - Minhas OS (driver e admin)
+   - Histórico completo de OS (admin)
+   Elementos:
+   - Toolbar (filtros/busca/limite/mine)
+   - Tabela profissional
+   - Pílulas de status
+   - Descrição com "ver mais"
+   - Rodapé/paginação
+   - Responsivo (mobile-first), incluindo "modo cards" < 480px
+   Identidade visual:
+   - Vermelho #E61414 (variável --brand)
+   ========================================================= */
 
-/* === PALETA GLOBAL === */
-:root {
+/* ============== PALETA / VARIÁVEIS ============== */
+:root{
+  /* Herdadas de style.css; aqui garantimos fallbacks */
   --bg: #f4f6f8;
   --card: #ffffff;
   --line: #e6e8eb;
   --line-soft: #f0f2f4;
-
   --ink: #111827;
   --ink-2: #4b4f56;
   --ink-3: #6b6f76;
 
-  /* COR PRINCIPAL — TRIUNFO */
+  /* Marca */
   --brand: #E61414;
   --brand-dark: #b70f0f;
-  --brand-light: rgba(230, 20, 20, 0.12);
+  --brand-12: rgba(230,20,20,0.12);
 
-  /* Status */
+  /* Status secundários */
   --green-bg:#e7f6ec; --green-ink:#157347;
   --yellow-bg:#fff2cd; --yellow-ink:#a87b00;
   --red-bg:#ffe5ea; --red-ink:#b02a37;
 }
 
-/* === BASE === */
-body {
-  color: var(--ink);
-  background: var(--bg);
+/* ============== TOOLBAR (filtros/busca/limite/mine) ============== */
+.myos-toolbar{
+  display:flex; gap:12px; align-items:center; margin-bottom:12px; flex-wrap:wrap;
 }
-
-/* === TOOLBAR "Minhas OS" / "Histórico de OS" === */
-.myos-toolbar {
-  display:flex;
-  gap:12px;
-  align-items:center;
-  margin-bottom:12px;
-  flex-wrap:wrap;
-}
-.myos-toolbar .field { display:flex; gap:6px; align-items:center; }
-.myos-toolbar .muted { color:var(--ink-3); font-size:12px; }
+.myos-toolbar .field{ display:flex; gap:6px; align-items:center; }
+.myos-toolbar .muted{ color:var(--ink-3); font-size:12px; }
 
 .myos-toolbar input[type="search"],
-.myos-toolbar select {
+.myos-toolbar select{
+  height:34px; padding:6px 10px;
+  border:1px solid #c6cbd1; border-radius:6px;
+  background:#fff; color:var(--ink);
+}
+.myos-toolbar input::placeholder{ color:#9aa0a6; }
+
+.myos-toolbar .btn{
+  height:34px; padding:6px 12px; border-radius:6px;
+  border:1px solid #c6cbd1; background:#fff; cursor:pointer; color:var(--ink);
+}
+.myos-toolbar .btn:hover{ background:#f8f9fa; }
+.myos-toolbar .btn.active{ background:var(--brand); border-color:var(--brand); color:#fff; }
+
+/* Empilhado no mobile */
+@media (max-width: 768px){
+  .myos-toolbar{ flex-direction: column; align-items: stretch; gap: 8px; }
+  .myos-toolbar .field{ width:100%; }
+  .myos-toolbar input[type="search"], .myos-toolbar select{ width:100%; }
+}
+
+/* ============== TABELA / LISTAGEM PROFISSIONAL ============== */
+.myos-table-wrap{
+  overflow:auto; border-radius:8px; border:1px solid var(--line); background:#fff;
+}
+table.myos-table{ width:100%; border-collapse:collapse; font-size:14px; }
+.myos-table thead th{
+  text-align:left; padding:10px; background:#f6f8fa; border-bottom:1px solid var(--line); white-space:nowrap;
+  position:sticky; top:0; z-index:1; color:#1f2937;
+}
+.myos-table tbody td{
+  padding:10px; border-bottom:1px solid var(--line-soft); vertical-align:top; color:var(--ink);
+}
+.myos-table tbody tr:hover{ background:#fafbfc; }
+
+/* Coluna de descrição com truncagem no desktop/tablet */
+.myos-table .desc{ color:var(--ink-2); max-width:520px; line-height:1.35; }
+.myos-table .desc .more{ color:var(--brand); cursor:pointer; margin-left:6px; }
+
+/* ============== PÍLULAS DE STATUS ============== */
+.pill{
+  display:inline-block; padding:2px 8px; border-radius:999px; font-size:12px; font-weight:600;
+}
+.pill.open    { background:var(--brand-12); color:var(--brand); }
+.pill.working { background:var(--yellow-bg); color:var(--yellow-ink); }
+.pill.waiting { background:var(--red-bg);    color:var(--red-ink); }
+.pill.done    { background:var(--green-bg);  color:var(--green-ink); }
+
+/* ============== RODAPÉ / PAGINAÇÃO ============== */
+.myos-footer{
+  display:flex; align-items:center; justify-content:space-between; gap:12px; margin-top:10px;
+}
+.myos-footer .total{ color:var(--ink-3); font-size:13px; }
+.myos-footer .pager{ display:flex; gap:8px; align-items:center; }
+.myos-footer .pager button{
+  padding:6px 10px; border:1px solid #c6cbd1; background:#fff; border-radius:6px; cursor:pointer; color:var(--ink);
+}
+.myos-footer .pager button:hover{ background:#f8f9fa; }
+.myos-footer .pager button:disabled{ opacity:.5; cursor:not-allowed; }
+
+/* ====== Ajustes de interação no mobile ====== */
+@media (hover: none){
+  .myos-toolbar .btn,
+  .myos-footer .pager button,
+  .myos-table select,
+  .myos-table .desc .more { min-height:44px; }
+}
+
+/* ============== RESPONSIVIDADE AVANÇADA (MODO "CARDS") ============== */
+/* Abaixo de 480px, a tabela vira uma lista de "cards" sem perder dados. */
+@media (max-width: 480px){
+
+  /* Some o cabeçalho da tabela */
+  .myos-table thead{ display:none; }
+
+  /* Cada TR vira um card */
+  .myos-table tbody tr{
+    display:block;
+    margin: 12px 10px;
+    background:#fff;
+    border:1px solid var(--line);
+    border-radius:10px;
+    overflow:hidden;
+  }
+
+  /* Cada TD vira uma linha "label : valor" */
+  .myos-table tbody td{
+    display:flex; align-items:flex-start; gap:8px;
+    padding:10px 12px;
+    border-bottom:1px solid var(--line-soft);
+  }
+  .myos-table tbody td:last-child{ border-bottom:none; }
+
+  /* "Rótulo" de cada campo (injeção por CSS via nth-child) */
+  .myos-table tbody td::before{
+    content: attr(data-label);
+    flex:0 0 auto;
+    min-width: 106px;
+    font-weight:600;
+    color:var(--ink-2);
+  }
+
+  /* Caso o JS ainda não atribua data-label, fornecemos via nth-child:
+     (Ordem usada no minhas-os.js)
+       1 Nº OS | 2 Abertura | 3 Garagem | 4 Frota | 5 Tipo | 6 Descrição | 7 Aberta por | 8 Status
+     (E no admin-os.js existe também a 9ª coluna: Ação)
+  */
+  .myos-table tbody td:nth-child(1)::before { content: "Nº OS"; }
+  .myos-table tbody td:nth-child(2)::before { content: "Abertura"; }
+  .myos-table tbody td:nth-child(3)::before { content: "Garagem"; }
+  .myos-table tbody td:nth-child(4)::before { content: "Frota"; }
+  .myos-table tbody td:nth-child(5)::before { content: "Tipo"; }
+  .myos-table tbody td:nth-child(6)::before { content: "Descrição"; }
+  .myos-table tbody td:nth-child(7)::before { content: "Aberta por"; }
+  .myos-table tbody td:nth-child(8)::before { content: "Status"; }
+  .myos-table tbody td:nth-child(9)::before { content: "Ação"; }
+
+  /* Ajusta a descrição para quebrar bem em mobile */
+  .myos-table .desc{ max-width: 100%; word-break: break-word; }
+}
+
+/* ============== FINO ACABAMENTO / ESTÉTICA ============== */
+.myos-table tbody tr{
+  transition: background .15s ease, transform .02s ease;
+}
+.myos-table tbody tr:active{ transform: scale(.999); }
+
+.myos-table select{
   height:34px;
-  padding:6px 10px;
-  border:1px solid #c6cbd1;
-  border-radius:6px;
-  background:#fff;
-  color:var(--ink);
-}
-
-.myos-toolbar .btn {
-  height:34px;
-  padding:6px 12px;
+  padding:6px 8px;
   border-radius:6px;
   border:1px solid #c6cbd1;
-  background:#fff;
-  cursor:pointer;
-  color:var(--ink);
-}
-.myos-toolbar .btn:hover {
-  background:#f8f9fa;
+  background:#fff; color:var(--ink);
 }
 
-.myos-toolbar .btn.active {
-  background:var(--brand);
-  border-color:var(--brand);
-  color:#fff;
+/* Título da seção “Minhas OS / Histórico” quando usado sem card externo */
+#tela-minhas-os > .section-title,
+#tela-listagem-os > .section-title{
+  margin: 8px 0 12px 0;
 }
 
-/* === TABELA === */
-.myos-table-wrap {
-  overflow:auto;
-  border-radius:8px;
-  border:1px solid var(--line);
-  background:var(--card);
-}
+/* ============== MODO ESCURO (opcional, respeita preferências do SO) ============== */
+@media (prefers-color-scheme: dark){
+  :root{
+    --bg: #0f1115;
+    --card: #141820;
+    --surface: #141820;
+    --line: #222838;
+    --line-soft: #1a2030;
+    --ink: #e5e7eb;
+    --ink-2: #c9ced6;
+    --ink-3: #a1a7b3;
+    --brand-12: rgba(230,20,20,0.18);
+  }
 
-table.myos-table {
-  width:100%;
-  border-collapse:collapse;
-  font-size:14px;
-}
+  .myos-table-wrap { border-color: var(--line); background: var(--surface); }
+  .myos-table thead th { background: #1a2030; border-bottom-color: var(--line); color: var(--ink-2); }
+  .myos-table tbody td { border-bottom-color: var(--line-soft); color: var(--ink); }
+  .myos-table tbody tr:hover{ background:#161b25; }
 
-.myos-table thead th {
-  text-align:left;
-  padding:10px;
-  background:#f6f8fa;
-  border-bottom:1px solid var(--line);
-  white-space:nowrap;
-  position:sticky;
-  top:0;
-  z-index:1;
-  color:#1f2937;
-}
+  .myos-toolbar input[type="search"],
+  .myos-toolbar select,
+  .myos-table select{
+    background:#0f1320; border-color:#2a3145; color: var(--ink);
+  }
 
-.myos-table tbody td {
-  padding:10px;
-  border-bottom:1px solid var(--line-soft);
-  vertical-align:top;
-  color:var(--ink);
-}
+  .myos-footer .pager button{ background:#0f1320; border-color:#2a3145; color:var(--ink); }
+  .myos-footer .pager button:hover{ background:#12182b; }
 
-.myos-table tbody tr:hover {
-  background:#fafbfc;
-}
+  .myos-toolbar .btn{ background:#0f1320; border-color:#2a3145; color:var(--ink); }
+  .myos-toolbar .btn:hover{ background:#12182b; }
+  .myos-toolbar .btn.active{ background:var(--brand); border-color:var(--brand); color:#fff; }
 
-/* === STATUS PÍLLS === */
-.pill {
-  display:inline-block;
-  padding:2px 8px;
-  border-radius:999px;
-  font-size:12px;
-  font-weight:600;
+  .pill.open    { background: var(--brand-12); color: #ff4d4d; }
+  .pill.working { background: #3a2f00; color: #ffd24d; }
+  .pill.waiting { background: #3b0b12; color: #ff667a; }
+  .pill.done    { background: #0d2b1a; color: #7de0a6; }
 }
-
-/* Aberta → agora VERMELHO TRIUNFO */
-.pill.open {
-  background: var(--brand-light);
-  color: var(--brand);
-}
-
-/* Em andamento */
-.pill.working {
-  background: var(--yellow-bg);
-  color: var(--yellow-ink);
-}
-
-/* Aguardando */
-.pill.waiting {
-  background: var(--red-bg);
-  color: var(--red-ink);
-}
-
-/* Concluída */
-.pill.done {
-  background: var(--green-bg);
-  color: var(--green-ink);
-}
-
-/* === DESCRIÇÃO === */
-.desc {
-  color:var(--ink-2);
-  max-width:520px;
-  line-height:1.35;
-}
-.desc .more {
-  color:var(--brand);
-  cursor:pointer;
-  margin-left:6px;
-}
-
-/* === Paginação / Rodapé === */
-.myos-footer {
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  gap:12px;
-  margin-top:10px;
-}
-
-.myos-footer .total {
-  color:var(--ink-3);
-  font-size:13px;
-}
-
-.myos-footer .pager {
-  display:flex;
-  gap:8px;
-  align-items:center;
-}
-.myos-footer .pager button {
-  padding:6px 10px;
-  border:1px solid #c6cbd1;
-  background:#fff;
-  border-radius:6px;
-  cursor:pointer;
-  color:var(--ink);
-}
-
-.myos-footer .pager button:hover {
-  background:#f8f9fa;
-}
-.myos-footer .pager button:disabled {
-  opacity:.5;
-  cursor:not-allowed;
-}
-
-/* === Foco bonito e vermelho === */
-:focus-visible {
-  outline:2px solid var(--brand);
-  outline-offset:2px;
-}
-
-/* === Botão "Sair do Sistema" (sutil vermelho) === */
-#btnLogout.btn-exit:hover {
-  background: var(--brand-light);
-}
-``
