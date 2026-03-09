@@ -1,92 +1,201 @@
 /* public/css/myos.css
-   Estilos complementares para a tabela "Minhas OS" e pequenos aprimoramentos UI.
-   Seguro: não interfere no seu style.css; apenas adiciona classes usadas no minhas-os.js.
+   ESTILO PROFISSIONAL + IDENTIDADE VISUAL TRIUNFO (#E61414)
 */
 
-/* Tipografia e base leve (apenas suaviza, sem forçar reset) */
-:root{
+/* === PALETA GLOBAL === */
+:root {
   --bg: #f4f6f8;
   --card: #ffffff;
   --line: #e6e8eb;
   --line-soft: #f0f2f4;
+
   --ink: #111827;
   --ink-2: #4b4f56;
   --ink-3: #6b6f76;
-  --brand: #0d6efd;
-  --brand-ink: #0b5ed7;
+
+  /* COR PRINCIPAL — TRIUNFO */
+  --brand: #E61414;
+  --brand-dark: #b70f0f;
+  --brand-light: rgba(230, 20, 20, 0.12);
+
+  /* Status */
   --green-bg:#e7f6ec; --green-ink:#157347;
   --yellow-bg:#fff2cd; --yellow-ink:#a87b00;
   --red-bg:#ffe5ea; --red-ink:#b02a37;
-  --blue-bg:#e8f1ff; --blue-ink:#0d6efd;
 }
 
-body{
+/* === BASE === */
+body {
   color: var(--ink);
   background: var(--bg);
 }
 
-/* ---------- Toolbar de "Minhas OS" ---------- */
-.myos-toolbar{
-  display:flex; gap:12px; align-items:center; margin-bottom:12px; flex-wrap:wrap;
+/* === TOOLBAR "Minhas OS" / "Histórico de OS" === */
+.myos-toolbar {
+  display:flex;
+  gap:12px;
+  align-items:center;
+  margin-bottom:12px;
+  flex-wrap:wrap;
 }
-.myos-toolbar .field{ display:flex; gap:6px; align-items:center; }
-.myos-toolbar .muted{ color:var(--ink-3); font-size:12px; }
+.myos-toolbar .field { display:flex; gap:6px; align-items:center; }
+.myos-toolbar .muted { color:var(--ink-3); font-size:12px; }
+
 .myos-toolbar input[type="search"],
-.myos-toolbar select{
-  height:34px; padding:6px 10px; border:1px solid #c6cbd1; border-radius:6px; background:#fff; color:var(--ink);
-}
-.myos-toolbar .btn{
-  height:34px; padding:6px 12px; border-radius:6px; border:1px solid #c6cbd1; background:#fff; cursor:pointer;
+.myos-toolbar select {
+  height:34px;
+  padding:6px 10px;
+  border:1px solid #c6cbd1;
+  border-radius:6px;
+  background:#fff;
   color:var(--ink);
 }
-.myos-toolbar .btn.active{ background:var(--brand); border-color:var(--brand); color:#fff; }
-.myos-toolbar .btn:hover{ background:#f8f9fa; }
 
-/* ---------- Tabela "Minhas OS" ---------- */
-.myos-table-wrap{
-  overflow:auto; border-radius:8px; border:1px solid var(--line); background:var(--card);
-}
-table.myos-table{ width:100%; border-collapse:collapse; font-size:14px; }
-.myos-table thead th{
-  text-align:left; padding:10px; background:#f6f8fa; border-bottom:1px solid var(--line); white-space:nowrap;
-  position:sticky; top:0; z-index:1;
-  color:#1f2937;
-}
-.myos-table tbody td{
-  padding:10px; border-bottom:1px solid var(--line-soft); vertical-align:top; color:var(--ink);
-}
-.myos-table tbody tr:hover{ background:#fafbfc; }
-
-/* Pílulas de status */
-.pill{
-  display:inline-block; padding:2px 8px; border-radius:999px; font-size:12px; font-weight:600;
-}
-.pill.open    { background:var(--blue-bg);   color:var(--blue-ink); }
-.pill.working { background:var(--yellow-bg); color:var(--yellow-ink); }
-.pill.waiting { background:var(--red-bg);    color:var(--red-ink); }
-.pill.done    { background:var(--green-bg);  color:var(--green-ink); }
-
-/* Descrição truncada/expansível */
-.desc{ color:var(--ink-2); max-width:520px; line-height:1.35; }
-.desc .more{ color:var(--brand); cursor:pointer; margin-left:6px; }
-
-/* Rodapé/paginação */
-.myos-footer{
-  display:flex; align-items:center; justify-content:space-between; gap:12px; margin-top:10px;
-}
-.myos-footer .pager{ display:flex; gap:8px; align-items:center; }
-.myos-footer .pager button{
-  padding:6px 10px; border:1px solid #c6cbd1; background:#fff; border-radius:6px; cursor:pointer;
+.myos-toolbar .btn {
+  height:34px;
+  padding:6px 12px;
+  border-radius:6px;
+  border:1px solid #c6cbd1;
+  background:#fff;
+  cursor:pointer;
   color:var(--ink);
 }
-.myos-footer .pager button:hover{ background:#f8f9fa; }
-.myos-footer .pager button:disabled{ opacity:.5; cursor:not-allowed; }
-.myos-footer .total{ color:var(--ink-3); font-size:13px; }
-
-/* Botão de sair – sutilmente melhor */
-#btnLogout.btn-exit{
-  border: 1px solid #d1d5db;
-}
-#btnLogout.btn-exit:hover{
+.myos-toolbar .btn:hover {
   background:#f8f9fa;
 }
+
+.myos-toolbar .btn.active {
+  background:var(--brand);
+  border-color:var(--brand);
+  color:#fff;
+}
+
+/* === TABELA === */
+.myos-table-wrap {
+  overflow:auto;
+  border-radius:8px;
+  border:1px solid var(--line);
+  background:var(--card);
+}
+
+table.myos-table {
+  width:100%;
+  border-collapse:collapse;
+  font-size:14px;
+}
+
+.myos-table thead th {
+  text-align:left;
+  padding:10px;
+  background:#f6f8fa;
+  border-bottom:1px solid var(--line);
+  white-space:nowrap;
+  position:sticky;
+  top:0;
+  z-index:1;
+  color:#1f2937;
+}
+
+.myos-table tbody td {
+  padding:10px;
+  border-bottom:1px solid var(--line-soft);
+  vertical-align:top;
+  color:var(--ink);
+}
+
+.myos-table tbody tr:hover {
+  background:#fafbfc;
+}
+
+/* === STATUS PÍLLS === */
+.pill {
+  display:inline-block;
+  padding:2px 8px;
+  border-radius:999px;
+  font-size:12px;
+  font-weight:600;
+}
+
+/* Aberta → agora VERMELHO TRIUNFO */
+.pill.open {
+  background: var(--brand-light);
+  color: var(--brand);
+}
+
+/* Em andamento */
+.pill.working {
+  background: var(--yellow-bg);
+  color: var(--yellow-ink);
+}
+
+/* Aguardando */
+.pill.waiting {
+  background: var(--red-bg);
+  color: var(--red-ink);
+}
+
+/* Concluída */
+.pill.done {
+  background: var(--green-bg);
+  color: var(--green-ink);
+}
+
+/* === DESCRIÇÃO === */
+.desc {
+  color:var(--ink-2);
+  max-width:520px;
+  line-height:1.35;
+}
+.desc .more {
+  color:var(--brand);
+  cursor:pointer;
+  margin-left:6px;
+}
+
+/* === Paginação / Rodapé === */
+.myos-footer {
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  margin-top:10px;
+}
+
+.myos-footer .total {
+  color:var(--ink-3);
+  font-size:13px;
+}
+
+.myos-footer .pager {
+  display:flex;
+  gap:8px;
+  align-items:center;
+}
+.myos-footer .pager button {
+  padding:6px 10px;
+  border:1px solid #c6cbd1;
+  background:#fff;
+  border-radius:6px;
+  cursor:pointer;
+  color:var(--ink);
+}
+
+.myos-footer .pager button:hover {
+  background:#f8f9fa;
+}
+.myos-footer .pager button:disabled {
+  opacity:.5;
+  cursor:not-allowed;
+}
+
+/* === Foco bonito e vermelho === */
+:focus-visible {
+  outline:2px solid var(--brand);
+  outline-offset:2px;
+}
+
+/* === Botão "Sair do Sistema" (sutil vermelho) === */
+#btnLogout.btn-exit:hover {
+  background: var(--brand-light);
+}
+``
