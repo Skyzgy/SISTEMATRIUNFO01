@@ -1362,3 +1362,27 @@ window.fecharModalRequisicao = window.fecharModalRequisicao || fecharModalRequis
 window.abrirModalAbastecimento = window.abrirModalAbastecimento || abrirModalAbastecimento;
 window.fecharModalAbastecimento = window.fecharModalAbastecimento || fecharModalAbastecimento;
 ``
+/* === MOBILE MENU TOGGLER === */
+document.addEventListener('DOMContentLoaded', () => {
+  const btn = document.getElementById('btnMobileMenu');
+  const backdrop = document.getElementById('sidebarBackdrop');
+
+  if (!btn || !backdrop) return;
+
+  const openMenu = () => {
+    document.body.classList.add('sidebar-open');
+    backdrop.hidden = false;
+  };
+
+  const closeMenu = () => {
+    document.body.classList.remove('sidebar-open');
+    backdrop.hidden = true;
+  };
+
+  btn.addEventListener('click', () => {
+    const isOpen = document.body.classList.contains('sidebar-open');
+    isOpen ? closeMenu() : openMenu();
+  });
+
+  backdrop.addEventListener('click', closeMenu);
+});
