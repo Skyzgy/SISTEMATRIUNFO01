@@ -6,10 +6,13 @@
   <meta name="color-scheme" content="light dark" />
   <title>Triunfo System - Gestão de Frota</title>
 
-  <!-- CSS principal -->
+  <!-- CSS principal do app -->
   <link rel="stylesheet" href="/style.css" />
 
-  <!-- Fallback para classe .hidden caso o CSS externo não carregue -->
+  <!-- CSS complementar da seção "Minhas OS" (ETAPA C) -->
+  <link rel="stylesheet" href="/css/myos.css" />
+
+  <!-- Fallback mínimo -->
   <style>
     .hidden { display: none !important; }
   </style>
@@ -20,7 +23,7 @@
     <!-- SIDEBAR -->
     <nav class="sidebar" aria-label="Menu principal">
       <div class="sidebar-logo">
-        <img src="/logo.jpeg" alt="Viação Triunfo" />
+        <img src="/logo.jpeg" alt="Triunfo" style="max-width: 100%; height: auto;" />
       </div>
 
       <div class="menu-items" role="menu">
@@ -377,9 +380,9 @@
     </div>
   </div>
 
-  <!-- SCRIPTS (ordem correta + defer) -->
-  <script src="/script.js" defer></script>
-  <script src="/js/minhas-os.js" defer></script>
-</body>
+  <!-- SCRIPTS (ordem correta) -->
+    <script src="/script.js" defer></script>
+    <script src="/js/minhas-os.js" defer></script>
+    <script src="/js/admin-os.js" defer></script>
+  </body>
 </html>
-``

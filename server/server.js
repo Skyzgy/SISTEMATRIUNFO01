@@ -23,21 +23,59 @@ const DATA_DIR   = path.join(__dirname, "data");
 const OS_DB      = path.join(DATA_DIR, "os.json");
 const REQ_DB     = path.join(DATA_DIR, "req.json");
 const ABAST_DB   = path.join(DATA_DIR, "abast.json");
+// Sequência global de OS (incremental infinito)
+const SEQ_DB     = path.join(DATA_DIR, "os-sequence.json");
 
 // ====== Helpers de arquivo ======
 function ensureDir(dir) { if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true }); }
-function ensureFile(file, fallback = "[]") { if (!fs.existsSync(file)) fs.writeFileSync(file, fallback, "utf8"); }
-function readJson(file) { ensureFile(file); return JSON.parse(fs.readFileSync(file, "utf8") || "[]"); }
-function writeJson(file, data) { fs.writeFileSync(file, JSON.stringify(data, null, 2), "utf8"); }
+function ensureFile(file, fallback) {
+  if (!fs.existsSync(file)) fs.writeFileSync(file, fallback, "utf8");
+}
+function readJson(file, fallbackArr = true) {
+  try { return JSON.parse(fs.readFileSync(file, "utf8")); }
+  catch { return fallbackArr ? [] : null; }
+}
+function writeJson(file, data) {
+  fs.writeFileSync(file, JSON.stringify(data, null, 2), "utf8");
+}
 
-function ensureUsersFile(){ ensureFile(USERS_DB, "[]"); }
-function readUsers(){ ensureUsersFile(); return JSON.parse(fs.readFileSync(USERS_DB, "utf8") || "[]"); }
-function writeUsers(users){ fs.writeFileSync(USERS_DB, JSON.stringify(users, null, 2), "utf8"); }
-
+// Boot arquivos/pastas
 ensureDir(DATA_DIR);
 ensureFile(OS_DB, "[]");
 ensureFile(REQ_DB, "[]");
 ensureFile(ABAST_DB, "[]");
+ensureFile(USERS_DB, "[]");
+// SEQ_DB salvo como objeto { last: number }
+if (!fs.existsSync(SEQ_DB)) {
+  fs.writeFileSync(SEQ_DB, JSON.stringify({ last: 0 }, null, 2), "utf8");
+}
+
+// Helpers users
+function readUsers(){ return readJson(USERS_DB, true); }
+function writeUsers(users){ writeJson(USERS_DB, users); }
+
+// Sequência (incremental infinito)
+function readSeq() {
+  try {
+    const o = JSON.parse(fs.readFileSync(SEQ_DB, "utf8"));
+    return { last: Number(o?.last) || 0 };
+  } catch {
+    return { last: 0 };
+  }
+}
+function writeSeq(n) {
+  writeJson(SEQ_DB, { last: Number(n) || 0 });
+}
+function nextSequence() {
+  const s = readSeq();
+  const next = (Number(s.last) || 0) + 1;
+  writeSeq(next);
+  return next; // inteiro: 1,2,3...
+}
+function osNumberFrom(seq) {
+  const year = new Date().getFullYear();
+  return `${year}-${String(seq).padStart(6, "0")}`; // 2026-000001
+}
 
 function randomId(prefix = "u") { return `${prefix}_${Math.random().toString(36).slice(2)}${Date.now().toString(36)}`; }
 function isValidName(s){ return typeof s==="string" && s.trim().length>=2 && s.trim().length<=60; }
@@ -131,7 +169,11 @@ app.post("/api/auth/login", (req, res) => {
   if (!bcrypt.compareSync(String(password||""), user.passwordHash))
     return res.status(401).json({ error: "Credenciais inválidas." });
 
-  const token = jwt.sign({ id:user.id, firstName:user.firstName, lastName:user.lastName, role:user.role }, JWT_SECRET, { expiresIn: "8h" });
+  const token = jwt.sign(
+    { id:user.id, firstName:user.firstName, lastName:user.lastName, role:user.role },
+    JWT_SECRET,
+    { expiresIn: "8h" }
+  );
   res.cookie("token", token, {
     httpOnly: true,
     sameSite: "lax",                        // se front e API forem domínios diferentes (HTTPS), pode usar 'none'
@@ -149,12 +191,21 @@ app.post("/api/auth/logout", (_req, res) => {
 });
 
 // ====== MÓDULO: OS ======
-// Criar OS (driver e admin)
+// Criar OS (driver e admin) — com ID sequencial global
 app.post("/api/os", authRequired, roleRequired("driver","admin"), (req, res) => {
   const { garagem, motorista, frota, km, tipoServico, descricao } = req.body;
-  const os = readJson(OS_DB);
+
+  // Gera ID sequencial: 2026-000001, 2026-000002, ...
+  const seq = nextSequence();
+  const osId = osNumberFrom(seq);
+
+  const os = readJson(OS_DB, true);
+  const now = new Date().toISOString();
+  const openedByName = `${req.user?.firstName || ""} ${req.user?.lastName || ""}`.trim();
+
   const item = {
-    id: randomId("os"),
+    id: osId,                         // 👈 ID profissional
+    seq,                              // número puro (opcionalmente útil)
     garagem: String(garagem||"").trim(),
     motorista: String(motorista||"").trim(),
     frota: String(frota||"").trim(),
@@ -162,18 +213,22 @@ app.post("/api/os", authRequired, roleRequired("driver","admin"), (req, res) => 
     tipoServico: String(tipoServico||"").trim(),
     descricao: String(descricao||"").trim(),
     status: "aberta",
-    createdBy: req.user?.id,                // 👈 quem criou
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString()
+    createdBy: req.user?.id,
+    openedByName,                     // 👈 quem abriu (nome)
+    openedAt: now,                    // 👈 quando abriu (ISO)
+    createdAt: now,
+    updatedAt: now
   };
-  os.push(item); writeJson(OS_DB, os);
+
+  os.push(item);
+  writeJson(OS_DB, os);
   res.status(201).json({ message: "OS criada", os: item });
 });
 
 // Listar OS – driver vê só as dele; admin vê tudo (admin pode ?mine=1)
 app.get("/api/os", authRequired, roleRequired("driver","admin"), (req, res) => {
   const { status, frota, limit=50, page=1, mine } = req.query;
-  let rows = readJson(OS_DB);
+  let rows = readJson(OS_DB, true);
 
   if (req.user.role === "driver") {
     rows = rows.filter(r => r.createdBy === req.user.id);       // 👈 restrição por usuário
@@ -195,7 +250,7 @@ app.patch("/api/os/:id/status", authRequired, roleRequired("admin"), (req, res) 
   const { id } = req.params; const { status } = req.body;
   const allowed = ["aberta","andamento","aguardando","concluida"];
   if (!allowed.includes(status)) return res.status(400).json({ error: "Status inválido." });
-  const os = readJson(OS_DB);
+  const os = readJson(OS_DB, true);
   const i = os.findIndex(r => r.id === id);
   if (i<0) return res.status(404).json({ error: "OS não encontrada." });
   os[i].status = status; os[i].updatedAt = new Date().toISOString();
@@ -205,7 +260,7 @@ app.patch("/api/os/:id/status", authRequired, roleRequired("admin"), (req, res) 
 
 // Métricas de OS
 app.get("/api/os/metrics", authRequired, roleRequired("driver","admin"), (_req, res) => {
-  const rows = readJson(OS_DB);
+  const rows = readJson(OS_DB, true);
   const counts = { aberta:0, andamento:0, aguardando:0, concluida:0 };
   rows.forEach(r => { counts[r.status] = (counts[r.status]||0)+1; });
   res.json({ counts, total: rows.length });
@@ -214,14 +269,17 @@ app.get("/api/os/metrics", authRequired, roleRequired("driver","admin"), (_req, 
 // Últimas OS
 app.get("/api/os/recent", authRequired, roleRequired("driver","admin"), (req, res) => {
   const limit = Math.max(1, Math.min(50, Number(req.query.limit || 10)));
-  const rows = readJson(OS_DB).sort((a,b)=> b.createdAt.localeCompare(a.createdAt)).slice(0, limit);
+  const rows = readJson(OS_DB, true)
+    .sort((a,b)=> (b.createdAt||"").localeCompare(a.createdAt||""))
+    .slice(0, limit);
   res.json({ items: rows });
 });
 
 // ====== MÓDULO: REQUISIÇÃO (admin) ======
 app.post("/api/req", authRequired, roleRequired("admin"), (req, res) => {
   const { material, quantidade, garagem, frota, solicitante, data, codigo, descricao } = req.body;
-  const reqs = readJson(REQ_DB);
+  const reqs = readJson(REQ_DB, true);
+  const now = new Date().toISOString();
   const item = {
     id: randomId("req"),
     material: String(material||"").trim(),
@@ -234,8 +292,8 @@ app.post("/api/req", authRequired, roleRequired("admin"), (req, res) => {
     descricao: String(descricao||"").trim(),
     status: "aberta",
     createdBy: req.user?.id,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString()
+    createdAt: now,
+    updatedAt: now
   };
   reqs.push(item); writeJson(REQ_DB, reqs);
   res.status(201).json({ message: "Requisição criada", req: item });
@@ -243,7 +301,7 @@ app.post("/api/req", authRequired, roleRequired("admin"), (req, res) => {
 
 app.get("/api/req", authRequired, roleRequired("admin"), (req, res) => {
   const { status, frota, material, limit=50, page=1 } = req.query;
-  let rows = readJson(REQ_DB);
+  let rows = readJson(REQ_DB, true);
   if (status) rows = rows.filter(r => r.status === status);
   if (frota)  rows = rows.filter(r => r.frota === String(frota));
   if (material) rows = rows.filter(r => r.material?.toLowerCase().includes(String(material).toLowerCase()));
@@ -256,7 +314,7 @@ app.patch("/api/req/:id/status", authRequired, roleRequired("admin"), (req, res)
   const { id } = req.params; const { status } = req.body;
   const allowed = ["aberta","andamento","aguardando","concluida"];
   if (!allowed.includes(status)) return res.status(400).json({ error: "Status inválido." });
-  const rows = readJson(REQ_DB);
+  const rows = readJson(REQ_DB, true);
   const i = rows.findIndex(r => r.id === id);
   if (i<0) return res.status(404).json({ error: "Requisição não encontrada." });
   rows[i].status = status; rows[i].updatedAt = new Date().toISOString();
@@ -265,7 +323,7 @@ app.patch("/api/req/:id/status", authRequired, roleRequired("admin"), (req, res)
 });
 
 app.get("/api/req/metrics", authRequired, roleRequired("admin"), (_req, res) => {
-  const rows = readJson(REQ_DB);
+  const rows = readJson(REQ_DB, true);
   const counts = { aberta:0, andamento:0, aguardando:0, concluida:0 };
   rows.forEach(r => { counts[r.status] = (counts[r.status]||0)+1; });
   res.json({ counts, total: rows.length });
@@ -273,14 +331,16 @@ app.get("/api/req/metrics", authRequired, roleRequired("admin"), (_req, res) => 
 
 app.get("/api/req/recent", authRequired, roleRequired("admin"), (req, res) => {
   const limit = Math.max(1, Math.min(50, Number(req.query.limit || 10)));
-  const rows = readJson(REQ_DB).sort((a,b)=> b.createdAt.localeCompare(a.createdAt)).slice(0, limit);
+  const rows = readJson(REQ_DB, true)
+    .sort((a,b)=> (b.createdAt||"").localeCompare(a.createdAt||""))
+    .slice(0, limit);
   res.json({ items: rows });
 });
 
 // ====== MÓDULO: ABASTECIMENTO (admin) ======
 app.post("/api/abast", authRequired, roleRequired("admin"), (req, res) => {
   const { dataHora, frota, kmVeiculo, kmInicioBomba, kmFimBomba, litros } = req.body;
-  const rows = readJson(ABAST_DB);
+  const rows = readJson(ABAST_DB, true);
   const item = {
     id: randomId("ab"),
     dataHora: dataHora || new Date().toISOString(),
@@ -298,7 +358,7 @@ app.post("/api/abast", authRequired, roleRequired("admin"), (req, res) => {
 
 app.get("/api/abast", authRequired, roleRequired("admin"), (req, res) => {
   const { frota, limit=50, page=1 } = req.query;
-  let rows = readJson(ABAST_DB);
+  let rows = readJson(ABAST_DB, true);
   if (frota) rows = rows.filter(r => r.frota === String(frota));
   const p = Math.max(1, Number(page)); const l = Math.max(1, Math.min(1000, Number(limit)));
   const start = (p-1)*l; const end = start + l;
@@ -306,7 +366,7 @@ app.get("/api/abast", authRequired, roleRequired("admin"), (req, res) => {
 });
 
 app.get("/api/abast/metrics", authRequired, roleRequired("admin"), (_req, res) => {
-  const rows = readJson(ABAST_DB);
+  const rows = readJson(ABAST_DB, true);
   const totalReg = rows.length;
   const totalLitros = rows.reduce((s,r)=> s + Number(r.litros||0), 0);
   res.json({ totalReg, totalLitros });
@@ -314,31 +374,33 @@ app.get("/api/abast/metrics", authRequired, roleRequired("admin"), (_req, res) =
 
 app.get("/api/abast/recent", authRequired, roleRequired("admin"), (req, res) => {
   const limit = Math.max(1, Math.min(50, Number(req.query.limit || 10)));
-  const rows = readJson(ABAST_DB).sort((a,b)=> b.createdAt.localeCompare(a.createdAt)).slice(0, limit);
+  const rows = readJson(ABAST_DB, true)
+    .sort((a,b)=> (b.createdAt||"").localeCompare(a.createdAt||""))
+    .slice(0, limit);
   res.json({ items: rows });
 });
 
 // ====== DASHBOARD SUMMARY ======
 app.get("/api/dashboard/summary", authRequired, roleRequired("driver","admin"), (req, res) => {
-  const osRows = readJson(OS_DB);
+  const osRows = readJson(OS_DB, true);
   const osCounts = { aberta:0, andamento:0, aguardando:0, concluida:0 };
   osRows.forEach(r => { osCounts[r.status] = (osCounts[r.status]||0)+1; });
-  const osRecent = osRows.sort((a,b)=> b.createdAt.localeCompare(a.createdAt)).slice(0, 10);
+  const osRecent = osRows.sort((a,b)=> (b.createdAt||"").localeCompare(a.createdAt||"")).slice(0, 10);
 
   let reqCounts = null, reqRecent = null;
   if (req.user.role === "admin") {
-    const reqRows = readJson(REQ_DB);
+    const reqRows = readJson(REQ_DB, true);
     reqCounts = { aberta:0, andamento:0, aguardando:0, concluida:0 };
     reqRows.forEach(r => { reqCounts[r.status] = (reqCounts[r.status]||0)+1; });
-    reqRecent = reqRows.sort((a,b)=> b.createdAt.localeCompare(a.createdAt)).slice(0, 10);
+    reqRecent = reqRows.sort((a,b)=> (b.createdAt||"").localeCompare(a.createdAt||"")).slice(0, 10);
   }
 
   let abast = null;
   if (req.user.role === "admin") {
-    const abRows = readJson(ABAST_DB);
+    const abRows = readJson(ABAST_DB, true);
     const totalReg = abRows.length;
     const totalLitros = abRows.reduce((s,r)=> s + Number(r.litros||0), 0);
-    const recent = abRows.sort((a,b)=> b.createdAt.localeCompare(a.createdAt)).slice(0, 10);
+    const recent = abRows.sort((a,b)=> (b.createdAt||"").localeCompare(a.createdAt||"")).slice(0, 10);
     abast = { totalReg, totalLitros, recent };
   }
 
