@@ -7,7 +7,7 @@ const jwt = require("jsonwebtoken");
 const cookieParser = require("cookie-parser");
 const cors = require("cors");
 
-// ⚠️ Carrega .env apenas fora de produção para não sobrescrever PORT no Railway
+// Carrega .env apenas fora de produção (no Railway NÃO carregar para não travar a PORT)
 if (process.env.NODE_ENV !== "production") {
   require("dotenv").config();
 }
@@ -25,33 +25,23 @@ const REQ_DB     = path.join(DATA_DIR, "req.json");
 const ABAST_DB   = path.join(DATA_DIR, "abast.json");
 
 // ====== Helpers de arquivo ======
-function ensureDir(dir) {
-  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-}
-function ensureFile(file, fallback = "[]") {
-  if (!fs.existsSync(file)) fs.writeFileSync(file, fallback, "utf8");
-}
-function readJson(file) {
-  ensureFile(file);
-  return JSON.parse(fs.readFileSync(file, "utf8") || "[]");
-}
-function writeJson(file, data) {
-  fs.writeFileSync(file, JSON.stringify(data, null, 2), "utf8");
-}
-function ensureUsersFile() { ensureFile(USERS_DB, "[]"); }
-function readUsers() { ensureUsersFile(); return JSON.parse(fs.readFileSync(USERS_DB, "utf8") || "[]"); }
-function writeUsers(users) { fs.writeFileSync(USERS_DB, JSON.stringify(users, null, 2), "utf8"); }
+function ensureDir(dir) { if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true }); }
+function ensureFile(file, fallback = "[]") { if (!fs.existsSync(file)) fs.writeFileSync(file, fallback, "utf8"); }
+function readJson(file) { ensureFile(file); return JSON.parse(fs.readFileSync(file, "utf8") || "[]"); }
+function writeJson(file, data) { fs.writeFileSync(file, JSON.stringify(data, null, 2), "utf8"); }
+
+function ensureUsersFile(){ ensureFile(USERS_DB, "[]"); }
+function readUsers(){ ensureUsersFile(); return JSON.parse(fs.readFileSync(USERS_DB, "utf8") || "[]"); }
+function writeUsers(users){ fs.writeFileSync(USERS_DB, JSON.stringify(users, null, 2), "utf8"); }
 
 ensureDir(DATA_DIR);
 ensureFile(OS_DB, "[]");
 ensureFile(REQ_DB, "[]");
 ensureFile(ABAST_DB, "[]");
 
-function randomId(prefix = "u") {
-  return `${prefix}_${Math.random().toString(36).slice(2)}${Date.now().toString(36)}`;
-}
+function randomId(prefix = "u") { return `${prefix}_${Math.random().toString(36).slice(2)}${Date.now().toString(36)}`; }
 function isValidName(s){ return typeof s==="string" && s.trim().length>=2 && s.trim().length<=60; }
-function isValidSixDigitPassword(pwd){ return /^\d{6}$/.test(String(pwd)); }
+function isValidSixDigitPassword(p){ return /^\d{6}$/.test(String(p)); }
 
 // ====== Seed Admin ======
 (function seedAdmin(){
@@ -82,7 +72,7 @@ app.use(cookieParser());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Logger simples (útil no Railway)
+// Logger simples
 app.use((req, res, next) => {
   const t0 = Date.now();
   res.on("finish", () => console.log(`${req.method} ${req.url} -> ${res.statusCode} (${Date.now()-t0}ms)`));
@@ -105,18 +95,19 @@ function roleRequired(...roles) {
 }
 
 // ====== Healthcheck ======
-app.get("/healthz", (req, res) => res.status(200).json({ ok: true, ts: new Date().toISOString() }));
+app.get("/healthz", (_req, res) => res.status(200).json({ ok: true, ts: new Date().toISOString() }));
 
-// ====== Rotas de Autenticação ======
+// ====== Auth ======
 app.post("/api/auth/register", (req, res) => {
   const { firstName, lastName, password } = req.body;
   if (!isValidName(firstName) || !isValidName(lastName))
     return res.status(400).json({ error: "Nome e sobrenome devem ter de 2 a 60 caracteres." });
   if (!isValidSixDigitPassword(password))
-    return res.status(400).json({ error: "A senha deve ter exatamente 6 dígitos numéricos." });
+    return res.status(400).json({ error: "A senha deve ter 6 dígitos numéricos." });
 
   const users = readUsers();
-  if (users.find(u => u.firstName.toLowerCase()===firstName.toLowerCase() && u.lastName.toLowerCase()===lastName.toLowerCase()))
+  if (users.find(u => u.firstName.toLowerCase()===String(firstName).toLowerCase()
+                   && u.lastName.toLowerCase()===String(lastName).toLowerCase()))
     return res.status(409).json({ error: "Usuário já cadastrado." });
 
   users.push({
@@ -124,7 +115,7 @@ app.post("/api/auth/register", (req, res) => {
     firstName: firstName.trim(),
     lastName:  lastName.trim(),
     passwordHash: bcrypt.hashSync(password, 10),
-    role: "driver",
+    role: "driver", // 👈 SEMPRE motorista no cadastro normal
     createdAt: new Date().toISOString()
   });
   writeUsers(users);
@@ -134,8 +125,8 @@ app.post("/api/auth/register", (req, res) => {
 app.post("/api/auth/login", (req, res) => {
   const { firstName, lastName, password } = req.body;
   const users = readUsers();
-  const user = users.find(u => u.firstName.toLowerCase()===String(firstName||"").toLowerCase() &&
-                               u.lastName.toLowerCase()===String(lastName||"").toLowerCase());
+  const user = users.find(u => u.firstName.toLowerCase()===String(firstName||"").toLowerCase()
+                            && u.lastName.toLowerCase()===String(lastName||"").toLowerCase());
   if (!user) return res.status(401).json({ error: "Credenciais inválidas." });
   if (!bcrypt.compareSync(String(password||""), user.passwordHash))
     return res.status(401).json({ error: "Credenciais inválidas." });
@@ -143,7 +134,7 @@ app.post("/api/auth/login", (req, res) => {
   const token = jwt.sign({ id:user.id, firstName:user.firstName, lastName:user.lastName, role:user.role }, JWT_SECRET, { expiresIn: "8h" });
   res.cookie("token", token, {
     httpOnly: true,
-    sameSite: "lax",                    // se front e API forem domínios diferentes em HTTPS, depois podemos usar 'none'
+    sameSite: "lax",                        // se front e API forem domínios diferentes (HTTPS), pode usar 'none'
     secure: process.env.NODE_ENV === "production",
     maxAge: 1000*60*60*8
   });
@@ -151,11 +142,13 @@ app.post("/api/auth/login", (req, res) => {
 });
 
 app.get("/api/auth/me", authRequired, (req, res) => res.json({ user: req.user }));
-app.post("/api/auth/logout", (req, res) => { res.clearCookie("token"); res.json({ message: "Logout ok" }); });
 
-// ============================================================
-// ===================  MÓDULO: OS  ===========================
-// ============================================================
+app.post("/api/auth/logout", (_req, res) => {
+  res.clearCookie("token");
+  res.json({ message: "Logout ok" });
+});
+
+// ====== MÓDULO: OS ======
 // Criar OS (driver e admin)
 app.post("/api/os", authRequired, roleRequired("driver","admin"), (req, res) => {
   const { garagem, motorista, frota, km, tipoServico, descricao } = req.body;
@@ -169,7 +162,7 @@ app.post("/api/os", authRequired, roleRequired("driver","admin"), (req, res) => 
     tipoServico: String(tipoServico||"").trim(),
     descricao: String(descricao||"").trim(),
     status: "aberta",
-    createdBy: req.user?.id,
+    createdBy: req.user?.id,                // 👈 quem criou
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString()
   };
@@ -177,17 +170,15 @@ app.post("/api/os", authRequired, roleRequired("driver","admin"), (req, res) => 
   res.status(201).json({ message: "OS criada", os: item });
 });
 
-// ✅ Listar OS (com filtros) — driver vê só as dele; admin vê tudo (ou as próprias passando ?mine=1)
+// Listar OS – driver vê só as dele; admin vê tudo (admin pode ?mine=1)
 app.get("/api/os", authRequired, roleRequired("driver","admin"), (req, res) => {
-  const { status, frota, limit = 50, page = 1, mine } = req.query;
+  const { status, frota, limit=50, page=1, mine } = req.query;
   let rows = readJson(OS_DB);
 
   if (req.user.role === "driver") {
+    rows = rows.filter(r => r.createdBy === req.user.id);       // 👈 restrição por usuário
+  } else if (String(mine) === "1" || String(mine).toLowerCase() === "true") {
     rows = rows.filter(r => r.createdBy === req.user.id);
-  } else {
-    if (String(mine) === "1" || String(mine).toLowerCase() === "true") {
-      rows = rows.filter(r => r.createdBy === req.user.id);
-    }
   }
 
   if (status) rows = rows.filter(r => r.status === status);
@@ -195,10 +186,8 @@ app.get("/api/os", authRequired, roleRequired("driver","admin"), (req, res) => {
 
   const p = Math.max(1, Number(page));
   const l = Math.max(1, Math.min(1000, Number(limit)));
-  const start = (p - 1) * l;
-  const end   = start + l;
-
-  res.json({ total: rows.length, page: p, pageSize: l, items: rows.slice(start, end) });
+  const start = (p-1)*l, end = start + l;
+  res.json({ total: rows.length, page:p, pageSize:l, items: rows.slice(start,end) });
 });
 
 // Alterar status da OS (admin)
@@ -215,7 +204,7 @@ app.patch("/api/os/:id/status", authRequired, roleRequired("admin"), (req, res) 
 });
 
 // Métricas de OS
-app.get("/api/os/metrics", authRequired, roleRequired("driver","admin"), (req, res) => {
+app.get("/api/os/metrics", authRequired, roleRequired("driver","admin"), (_req, res) => {
   const rows = readJson(OS_DB);
   const counts = { aberta:0, andamento:0, aguardando:0, concluida:0 };
   rows.forEach(r => { counts[r.status] = (counts[r.status]||0)+1; });
@@ -229,9 +218,7 @@ app.get("/api/os/recent", authRequired, roleRequired("driver","admin"), (req, re
   res.json({ items: rows });
 });
 
-// ============================================================
-// =================  MÓDULO: REQUISIÇÃO  =====================
-// ============================================================
+// ====== MÓDULO: REQUISIÇÃO (admin) ======
 app.post("/api/req", authRequired, roleRequired("admin"), (req, res) => {
   const { material, quantidade, garagem, frota, solicitante, data, codigo, descricao } = req.body;
   const reqs = readJson(REQ_DB);
@@ -277,7 +264,7 @@ app.patch("/api/req/:id/status", authRequired, roleRequired("admin"), (req, res)
   res.json({ message: "Status atualizado", req: rows[i] });
 });
 
-app.get("/api/req/metrics", authRequired, roleRequired("admin"), (req, res) => {
+app.get("/api/req/metrics", authRequired, roleRequired("admin"), (_req, res) => {
   const rows = readJson(REQ_DB);
   const counts = { aberta:0, andamento:0, aguardando:0, concluida:0 };
   rows.forEach(r => { counts[r.status] = (counts[r.status]||0)+1; });
@@ -290,9 +277,7 @@ app.get("/api/req/recent", authRequired, roleRequired("admin"), (req, res) => {
   res.json({ items: rows });
 });
 
-// ============================================================
-// =================  MÓDULO: ABASTECIMENTO  ==================
-// ============================================================
+// ====== MÓDULO: ABASTECIMENTO (admin) ======
 app.post("/api/abast", authRequired, roleRequired("admin"), (req, res) => {
   const { dataHora, frota, kmVeiculo, kmInicioBomba, kmFimBomba, litros } = req.body;
   const rows = readJson(ABAST_DB);
@@ -320,7 +305,7 @@ app.get("/api/abast", authRequired, roleRequired("admin"), (req, res) => {
   res.json({ total: rows.length, page:p, pageSize:l, items: rows.slice(start,end) });
 });
 
-app.get("/api/abast/metrics", authRequired, roleRequired("admin"), (req, res) => {
+app.get("/api/abast/metrics", authRequired, roleRequired("admin"), (_req, res) => {
   const rows = readJson(ABAST_DB);
   const totalReg = rows.length;
   const totalLitros = rows.reduce((s,r)=> s + Number(r.litros||0), 0);
@@ -333,9 +318,7 @@ app.get("/api/abast/recent", authRequired, roleRequired("admin"), (req, res) => 
   res.json({ items: rows });
 });
 
-// ============================================================
-// =================  DASHBOARD: RESUMO GERAL  ================
-// ============================================================
+// ====== DASHBOARD SUMMARY ======
 app.get("/api/dashboard/summary", authRequired, roleRequired("driver","admin"), (req, res) => {
   const osRows = readJson(OS_DB);
   const osCounts = { aberta:0, andamento:0, aguardando:0, concluida:0 };
@@ -367,18 +350,14 @@ app.get("/api/dashboard/summary", authRequired, roleRequired("driver","admin"), 
   });
 });
 
-// ====== Páginas (guarda de HTML) ======
-app.get(['/auth','/auth.html'], (req, res) => {
-  res.sendFile(path.join(PUBLIC_DIR, 'auth.html'));
-});
-app.get(['/', '/index', '/index.html'], authRequired, (req, res) => {
-  res.sendFile(path.join(PUBLIC_DIR, 'index.html'));
-});
+// ====== Páginas ======
+app.get(['/auth','/auth.html'], (_req, res) => res.sendFile(path.join(PUBLIC_DIR, 'auth.html')));
+app.get(['/', '/index', '/index.html'], authRequired, (_req, res) => res.sendFile(path.join(PUBLIC_DIR, 'index.html')));
 
-// ====== Estáticos (CSS/JS/IMG) ======
+// Estáticos
 app.use(express.static(PUBLIC_DIR));
 
-// ====== Start ======
+// Start
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 Server ouvindo em 0.0.0.0`);
   console.log(`   • NODE_ENV        = ${process.env.NODE_ENV || '(vazio)'}`);
