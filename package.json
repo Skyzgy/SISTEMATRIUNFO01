@@ -6,8 +6,8 @@
   "scripts": {
     "dev": "node server/server.js",
     "start": "node server/server.js",
-    "prestart": "prisma migrate deploy --schema=server/prisma/schema.prisma || prisma db push --schema=server/prisma/schema.prisma",
-    "postinstall": "prisma generate --schema=server/prisma/schema.prisma"
+    "prestart": "node node_modules/prisma/build/index.js migrate deploy --schema=server/prisma/schema.prisma || node node_modules/prisma/build/index.js db push --schema=server/prisma/schema.prisma",
+    "postinstall": "node node_modules/prisma/build/index.js generate --schema=server/prisma/schema.prisma"
   },
   "engines": {
     "node": ">=18"
