@@ -1,17 +1,20 @@
 /* =========================================================
    Triunfo System - Gestão de Frota
-   script.js (COMPLETO - PARTE 1/3)
-   - Utilitários, catálogos, modais, navegação
-   - Salvamento de OS/REQ/ABAST (API)
-   - A PARTE 2 virá com dashboard, renderizações e buscas
-   - A PARTE 3 virá com inicialização, helpers da API, logout,
-     mobile menu e o botão de Exportação Excel (apenas ADMIN)
+   script.js (COMPLETO e CONSOLIDADO)
+   - Catálogos e utilitários
+   - Modais (OS / Requisição / Abastecimento)
+   - Navegação SPA
+   - Tabelas (legado localStorage, mantidas)
+   - API helpers + Dashboard (via /summary)
+   - Tela inicial por perfil (driver → ‘minhas-os’; admin → ‘dashboard’)
+   - Logout
+   - Mobile menu (☰) – abrir/fechar sidebar no celular
    ========================================================= */
 
 "use strict";
 
 /* =========================
-   Catálogos (dados de apoio)
+   Catálogos (dados reais)
 ========================= */
 const bancoDeDados = {
   garagens: ["SANTA LUZIA", "MATOZINHOS"],
@@ -56,28 +59,32 @@ const bancoDeDados = {
     "MATOZINHOS": [{ modelo: "ÔNIBUS TESTE", placa: "AAA-0000", prefixo: "1010" }]
   }
 };
+
+// Solicitantes por garagem (para Requisição)
 const solicitantesPorGaragem = {
   "SANTA LUZIA": ["SERGIO", "ADÃO", "WANDERLEY", "VAVA", "ROGERIO"],
   "MATOZINHOS":  ["SERGIO", "ADÃO", "WANDERLEY", "VAVA", "ROGERIO"]
 };
 
 /* =========================
-   Persistência (localStorage) – legado
+   Persistência (localStorage) – legado p/ “Ver todos”
 ========================= */
 const STORAGE_KEYS = { OS: "triunfo_os", REQ: "triunfo_req", ABAST: "triunfo_abast" };
 let ordensServico   = carregarLista(STORAGE_KEYS.OS);
 let requisicoes     = carregarLista(STORAGE_KEYS.REQ);
 let abastecimentos  = carregarLista(STORAGE_KEYS.ABAST);
 
+/* =========================
+   Status padronizados (legado)
+========================= */
 const STATUS = ["ABERTA", "EM ANDAMENTO", "AGUARDANDO", "CONCLUÍDA"];
 
 /* =========================
-   Utilitários diversos
+   Utilitários
 ========================= */
 function carregarLista(key) { try { return JSON.parse(localStorage.getItem(key)) || []; } catch { return []; } }
 function salvarLista(key, arr) { localStorage.setItem(key, JSON.stringify(arr)); }
 function gerarId(prefix) { return `${prefix}-${Math.floor(Math.random() * 900000 + 100000)}`; }
-
 function formatarDataBR(d = new Date()) {
   const dd = String(d.getDate()).padStart(2, "0");
   const mm = String(d.getMonth() + 1).padStart(2, "0");
@@ -96,9 +103,10 @@ function ISOparaBR(isoStr) {
   return `${d}/${m}/${y}`;
 }
 function escapeHTML(str) {
+  // Mantido do seu original (mesmo comportamento de antes)
   return String(str)
-    .replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;")
-    .replace(/"/g,"&quot;").replace(/'/g,"&#039;");
+    .replace(/&amp;/g,"&amp;amp;").replace(/&lt;/g,"&amp;lt;").replace(/&gt;/g,"&amp;gt;")
+    .replace(/"/g,"&amp;quot;").replace(/'/g,"&amp;#039;");
 }
 function normalizarStatus(s){ if(!s) return "ABERTA"; const b=String(s).trim().toUpperCase(); if (b==="FECHADA") return "CONCLUÍDA"; return STATUS.includes(b)?b:"ABERTA"; }
 function setText(id,val){ const el=document.getElementById(id); if(el) el.textContent=String(val ?? 0); }
@@ -271,6 +279,7 @@ function popularSelect(id, lista, placeholder = "Selecione...") {
     `<option value="">${placeholder}</option>` +
     (lista || []).map(v => `<option value="${v}">${v}</option>`).join("");
 }
+
 function popularTipoServico() {
   const s = document.getElementById("selectTipoServico");
   if (!s) return;
@@ -280,6 +289,7 @@ function popularTipoServico() {
       .map(t => `<option value="${t}">${t}</option>`)
       .join("");
 }
+
 function popularSelectsRequisicao() {
   popularSelect("selectGaragemReq", bancoDeDados.garagens, "Escolha uma garagem...");
   const sF = document.getElementById("selectFrotaReq");
@@ -316,6 +326,7 @@ function atualizarCamposPorGaragem() {
       frotas.map(v => `<option value="${v.prefixo}">${v.prefixo} • ${v.placa}</option>`).join("");
   }
 }
+
 function atualizarCamposReqPorGaragem() {
   const g     = document.getElementById("selectGaragemReq").value;
   const sFrot = document.getElementById("selectFrotaReq");
@@ -457,8 +468,6 @@ async function salvarAbastecimento() {
   if (!Number.isNaN(nIni) && !Number.isNaN(nFim) && nFim < nIni) erros.push("KM final da bomba >= KM inicial.");
   if (!quantidade || Number(quantidade) <= 0) erros.push("Informe a quantidade (litros > 0).");
 
-  if (erros.length) { alert("Verifique os campos:\n- " + erros.join("\n- ")); return; }
-
   const btn  = document.querySelector('[data-submit-abast]');
   const prev = btn?.textContent;
   if (btn) { btn.disabled = true; btn.textContent = 'Enviando...'; }
@@ -486,502 +495,657 @@ async function salvarAbastecimento() {
   }
 }
 /* =========================================================
-   PARTE 2 / 3 — Dashboards, tabelas, buscas e renderizações
+   PARTE 2 / 3 — Dashboard, tabelas legadas, ações e buscas
 ========================================================= */
 
 /* =========================
-   Dashboard (admin)
+   Dashboard (via API)
+========================= */
+async function atualizarDashboard() {
+  try {
+    if (typeof loadDashboard === 'function') {
+      await loadDashboard();
+    }
+  } catch (e) {
+    console.warn('[atualizarDashboard] aviso:', e?.message || e);
+  }
+}
+
+function renderUltimasOS(container, dados) {
+  if (!container) return;
+  container.innerHTML = "";
+  if (!dados?.length) {
+    container.classList.add("empty-state");
+    container.textContent = "Sem registros";
+    return;
+  }
+  container.classList.remove("empty-state");
+
+  const ul = document.createElement("ul");
+  ul.className = "list-simples";
+
+  dados.slice(0, 5).forEach(os => {
+    const li = document.createElement("li");
+    const desc = os.descricao ? escapeHTML(os.descricao) : "";
+    const resumoDesc = desc ? (desc.length > 140 ? desc.slice(0, 140) + "..." : desc) : "";
+    li.innerHTML = `
+      <div><strong>${escapeHTML(os.id)}</strong> • ${escapeHTML(os.dataBR || "")} • ${escapeHTML(os.servico || "")}</div>
+      <div class="meta">Garagem: ${escapeHTML(os.garagem || "-")} • Frota: ${escapeHTML(os.frota || "")} • Motorista: ${escapeHTML(os.motorista || "")} • Status: ${escapeHTML(os.status || "")}</div>
+      ${resumoDesc ? `<div class="desc">${resumoDesc}</div>` : ""}
+    `;
+    ul.appendChild(li);
+  });
+
+  container.appendChild(ul);
+}
+
+/* =========================
+   Tabelas completas (LEGADO – localStorage)
+========================= */
+function renderizarTabelaOSCompleta() {
+  const wrap = document.getElementById("tabela-completa-os");
+  if (!wrap) return;
+
+  if (!ordensServico.length) {
+    wrap.innerHTML = `<div class="empty-state">Sem registros</div>`;
+    return;
+  }
+
+  const rows = ordensServico.map((os, idx) => `
+    <tr>
+      <td>${escapeHTML(os.id)}</td>
+      <td>${escapeHTML(os.dataBR || "")}</td>
+      <td>${escapeHTML(os.garagem || "")}</td>
+      <td>${escapeHTML(os.motorista || "")}</td>
+      <td>${escapeHTML(os.frota || "")}</td>
+      <td>${os.km ?? "-"}</td>
+      <td>${escapeHTML(os.servico || "")}</td>
+      <td>${escapeHTML(os.descricao || "")}</td>
+      <td>
+        <select class="status-select" onchange="alterarStatusOS('${os.id}', this.value, ${idx})">
+          ${STATUS.map(s => `<option value="${s}" ${normalizarStatus(os.status)===s?'selected':''}>${s}</option>`).join("")}
+        </select>
+      </td>
+      <td>
+        <button class="btn-acao" onclick="concluirOS('${os.id}', ${idx})">Concluir</button>
+        <button class="btn-acao secondary" onclick="removerOS('${os.id}', ${idx})">Remover</button>
+      </td>
+    </tr>
+  `).join("");
+
+  wrap.innerHTML = `
+    <div class="tabela-wrap">
+      <table class="tabela">
+        <thead>
+          <tr>
+            <th>ID</th><th>Data</th><th>Garagem</th><th>Motorista</th><th>Frota</th>
+            <th>KM</th><th>Tipo</th><th>Descrição</th><th>Status</th><th>Ações</th>
+          </tr>
+        </thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>
+  `;
+}
+
+function renderizarTabelaREQCompleta() {
+  const wrap = document.getElementById("tabela-completa-req");
+  if (!wrap) return;
+
+  if (!requisicoes.length) {
+    wrap.innerHTML = `<div class="empty-state">Sem registros</div>`;
+    return;
+  }
+
+  const rows = requisicoes.map((req, idx) => `
+    <tr>
+      <td>${escapeHTML(req.id)}</td>
+      <td>${escapeHTML(req.dataBR || "")}</td>
+      <td>${escapeHTML(req.material || "")}</td>
+      <td>${escapeHTML(String(req.quantidade ?? req.unidade ?? "-"))}</td>
+      <td>${escapeHTML(req.garagem || "")}</td>
+      <td>${escapeHTML(req.frota || "")}</td>
+      <td>${escapeHTML(req.solicitante || "")}</td>
+      <td>${escapeHTML(req.codigo || "")}</td>
+      <td>${escapeHTML(req.descricao || "")}</td>
+      <td>
+        <select class="status-select" onchange="alterarStatusREQ('${req.id}', this.value, ${idx})">
+          ${STATUS.map(s => `<option value="${s}" ${normalizarStatus(req.status)===s?'selected':''}>${s}</option>`).join("")}
+        </select>
+      </td>
+      <td>
+        <button class="btn-acao" onclick="concluirREQ('${req.id}', ${idx})">Concluir</button>
+        <button class="btn-acao secondary" onclick="removerREQ('${req.id}', ${idx})">Remover</button>
+      </td>
+    </tr>
+  `).join("");
+
+  wrap.innerHTML = `
+    <div class="tabela-wrap">
+      <table class="tabela">
+        <thead>
+          <tr>
+            <th>ID</th><th>Data</th><th>Material</th><th>Quantidade</th>
+            <th>Garagem</th><th>Frota</th><th>Solicitante</th>
+            <th>Código</th><th>Descrição</th><th>Status</th><th>Ações</th>
+          </tr>
+        </thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>
+  `;
+}
+
+function renderizarTabelaAbastecimentoCompleta() {
+  const wrap = document.getElementById("tabela-completa-abast");
+  if (!wrap) return;
+
+  if (!abastecimentos.length) {
+    wrap.innerHTML = `<div class="empty-state">Sem registros</div>`;
+    return;
+  }
+
+  const rows = abastecimentos.map((a, idx) => `
+    <tr>
+      <td>${escapeHTML(a.id)}</td>
+      <td>${escapeHTML(a.dataBR || "")}</td>
+      <td>${escapeHTML(a.frota || "")}</td>
+      <td>${escapeHTML(a.placa || "")}</td>
+      <td>${escapeHTML(a.garagem || "")}</td>
+      <td>${escapeHTML(String(a.kmVeiculo))}</td>
+      <td>${escapeHTML(String(a.kmBombaIni))}</td>
+      <td>${escapeHTML(String(a.kmBombaFim))}</td>
+      <td>${escapeHTML(String((Number(a.quantidade)||0).toFixed(3)))} L</td>
+      <td>
+        <button class="btn-acao secondary" onclick="removerAbastecimento('${a.id}', ${idx})">Remover</button>
+      </td>
+    </tr>
+  `).join("");
+
+  wrap.innerHTML = `
+    <div class="tabela-wrap">
+      <table class="tabela">
+        <thead>
+          <tr>
+            <th>ID</th><th>Data/Hora</th><th>Frota</th><th>Placa</th><th>Garagem</th>
+            <th>KM Veículo</th><th>KM Bomba (Ini)</th><th>KM Bomba (Fim)</th><th>Quantidade (L)</th><th>Ações</th>
+          </tr>
+        </thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>
+  `;
+}
+
+/* =========================
+   Ações (LEGADO – localStorage)
+========================= */
+function alterarStatusOS(id, novo, indexFallback = -1) {
+  let idx = ordensServico.findIndex(x => x.id === id);
+  if (idx < 0) idx = indexFallback;
+  if (idx < 0 || !ordensServico[idx]) return;
+
+  ordensServico[idx].status = normalizarStatus(novo);
+  salvarLista(STORAGE_KEYS.OS, ordensServico);
+
+  renderizarTabelaOSCompleta();
+  atualizarDashboard();
+}
+function concluirOS(id, indexFallback = -1) { alterarStatusOS(id, "CONCLUÍDA", indexFallback); }
+function removerOS(id, indexFallback = -1) {
+  let idx = ordensServico.findIndex(x => x.id === id);
+  if (idx < 0) idx = indexFallback;
+  if (idx < 0 || !ordensServico[idx]) return;
+  if (!confirm(`Remover ${ordensServico[idx].id}? Esta ação não pode ser desfeita.`)) return;
+
+  ordensServico.splice(idx, 1);
+  salvarLista(STORAGE_KEYS.OS, ordensServico);
+
+  renderizarTabelaOSCompleta();
+  atualizarDashboard();
+}
+
+function alterarStatusREQ(id, novo, indexFallback = -1) {
+  let idx = requisicoes.findIndex(x => x.id === id);
+  if (idx < 0) idx = indexFallback;
+  if (idx < 0 || !requisicoes[idx]) return;
+
+  requisicoes[idx].status = normalizarStatus(novo);
+  salvarLista(STORAGE_KEYS.REQ, requisicoes);
+
+  renderizarTabelaREQCompleta();
+  atualizarDashboard();
+}
+function concluirREQ(id, indexFallback = -1) { alterarStatusREQ(id, "CONCLUÍDA", indexFallback); }
+function removerREQ(id, indexFallback = -1) {
+  let idx = requisicoes.findIndex(x => x.id === id);
+  if (idx < 0) idx = indexFallback;
+  if (idx < 0 || !requisicoes[idx]) return;
+  if (!confirm(`Remover ${requisicoes[idx].id}? Esta ação não pode ser desfeita.`)) return;
+
+  requisicoes.splice(idx, 1);
+  salvarLista(STORAGE_KEYS.REQ, requisicoes);
+
+  renderizarTabelaREQCompleta();
+  atualizarDashboard();
+}
+
+function removerAbastecimento(id, indexFallback = -1) {
+  let idx = abastecimentos.findIndex(x => x.id === id);
+  if (idx < 0) idx = indexFallback;
+  if (idx < 0 || !abastecimentos[idx]) return;
+  if (!confirm(`Remover ${abastecimentos[idx].id}? Esta ação não pode ser desfeita.`)) return;
+
+  abastecimentos.splice(idx, 1);
+  salvarLista(STORAGE_KEYS.ABAST, abastecimentos);
+
+  renderizarTabelaAbastecimentoCompleta();
+  atualizarDashboard();
+}
+
+/* =========================
+   BUSCA nas telas “Ver todos” (LEGADO)
+========================= */
+const BUSCA_STATE = { os: "", req: "", abast: "" };
+function norm(s) {
+  return String(s ?? "")
+    .toLowerCase()
+    .normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+}
+
+function renderizarTabelaOSFiltrada() {
+  const termo = norm(BUSCA_STATE.os);
+  let lista = ordensServico;
+
+  if (termo) {
+    lista = ordensServico.filter(os => {
+      const campos = [
+        os.id, os.dataBR, os.garagem, os.motorista, os.frota,
+        os.km, os.servico, os.descricao, os.status
+      ];
+      return campos.some(v => norm(v).includes(termo));
+    });
+  }
+
+  const wrap = document.getElementById("tabela-completa-os");
+  if (!wrap) return;
+  if (!lista.length) { wrap.innerHTML = `<div class="empty-state">Sem registros</div>`; return; }
+
+  const rows = lista.map((os, idx) => `
+    <tr>
+      <td>${escapeHTML(os.id)}</td>
+      <td>${escapeHTML(os.dataBR || "")}</td>
+      <td>${escapeHTML(os.garagem || "")}</td>
+      <td>${escapeHTML(os.motorista || "")}</td>
+      <td>${escapeHTML(os.frota || "")}</td>
+      <td>${os.km ?? "-"}</td>
+      <td>${escapeHTML(os.servico || "")}</td>
+      <td>${escapeHTML(os.descricao || "")}</td>
+      <td>
+        <select class="status-select" onchange="alterarStatusOS('${os.id}', this.value, ${idx})">
+          ${STATUS.map(s => `<option value="${s}" ${normalizarStatus(os.status)===s?'selected':''}>${s}</option>`).join("")}
+        </select>
+      </td>
+      <td>
+        <button class="btn-acao" onclick="concluirOS('${os.id}', ${idx})">Concluir</button>
+        <button class="btn-acao secondary" onclick="removerOS('${os.id}', ${idx})">Remover</button>
+      </td>
+    </tr>
+  `).join("");
+
+  wrap.innerHTML = `
+    <div class="tabela-wrap">
+      <table class="tabela">
+        <thead>
+          <tr>
+            <th>ID</th><th>Data</th><th>Garagem</th><th>Motorista</th><th>Frota</th>
+            <th>KM</th><th>Tipo</th><th>Descrição</th><th>Status</th><th>Ações</th>
+          </tr>
+        </thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>
+  `;
+}
+
+function renderizarTabelaREQFiltrada() {
+  const termo = norm(BUSCA_STATE.req);
+  let lista = requisicoes;
+
+  if (termo) {
+    lista = requisicoes.filter(req => {
+      const campos = [
+        req.id, req.dataBR, req.material, req.quantidade, req.garagem,
+        req.frota, req.solicitante, req.codigo, req.descricao, req.status
+      ];
+      return campos.some(v => norm(v).includes(termo));
+    });
+  }
+
+  const wrap = document.getElementById("tabela-completa-req");
+  if (!wrap) return;
+  if (!lista.length) { wrap.innerHTML = `<div class="empty-state">Sem registros</div>`; return; }
+
+  const rows = lista.map((req, idx) => `
+    <tr>
+      <td>${escapeHTML(req.id)}</td>
+      <td>${escapeHTML(req.dataBR || "")}</td>
+      <td>${escapeHTML(req.material || "")}</td>
+      <td>${escapeHTML(String(req.quantidade ?? req.unidade ?? "-"))}</td>
+      <td>${escapeHTML(req.garagem || "")}</td>
+      <td>${escapeHTML(req.frota || "")}</td>
+      <td>${escapeHTML(req.solicitante || "")}</td>
+      <td>${escapeHTML(req.codigo || "")}</td>
+      <td>${escapeHTML(req.descricao || "")}</td>
+      <td>
+        <select class="status-select" onchange="alterarStatusREQ('${req.id}', this.value, ${idx})">
+          ${STATUS.map(s => `<option value="${s}" ${normalizarStatus(req.status)===s?'selected':''}>${s}</option>`).join("")}
+        </select>
+      </td>
+      <td>
+        <button class="btn-acao" onclick="concluirREQ('${req.id}', ${idx})">Concluir</button>
+        <button class="btn-acao secondary" onclick="removerREQ('${req.id}', ${idx})">Remover</button>
+      </td>
+    </tr>
+  `).join("");
+
+  wrap.innerHTML = `
+    <div class="tabela-wrap">
+      <table class="tabela">
+        <thead>
+          <tr>
+            <th>ID</th><th>Data</th><th>Material</th><th>Quantidade</th>
+            <th>Garagem</th><th>Frota</th><th>Solicitante</th>
+            <th>Código</th><th>Descrição</th><th>Status</th><th>Ações</th>
+          </tr>
+        </thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>
+  `;
+}
+
+function renderizarTabelaAbastecimentoFiltrada() {
+  const termo = norm(BUSCA_STATE.abast);
+  let lista = abastecimentos;
+
+  if (termo) {
+    lista = abastecimentos.filter(a => {
+      const campos = [
+        a.id, a.dataBR, a.frota, a.placa, a.garagem,
+        a.kmVeiculo, a.kmBombaIni, a.kmBombaFim, a.quantidade
+      ];
+      return campos.some(v => norm(v).includes(termo));
+    });
+  }
+
+  const wrap = document.getElementById("tabela-completa-abast");
+  if (!wrap) return;
+  if (!lista.length) { wrap.innerHTML = `<div class="empty-state">Sem registros</div>`; return; }
+
+  const rows = lista.map((a, idx) => `
+    <tr>
+      <td>${escapeHTML(a.id)}</td>
+      <td>${escapeHTML(a.dataBR || "")}</td>
+      <td>${escapeHTML(a.frota || "")}</td>
+      <td>${escapeHTML(a.placa || "")}</td>
+      <td>${escapeHTML(a.garagem || "")}</td>
+      <td>${escapeHTML(String(a.kmVeiculo))}</td>
+      <td>${escapeHTML(String(a.kmBombaIni))}</td>
+      <td>${escapeHTML(String(a.kmBombaFim))}</td>
+      <td>${escapeHTML(String((Number(a.quantidade)||0).toFixed(3)))} L</td>
+      <td>
+        <button class="btn-acao secondary" onclick="removerAbastecimento('${a.id}', ${idx})">Remover</button>
+      </td>
+    </tr>
+  `).join("");
+
+  wrap.innerHTML = `
+    <div class="tabela-wrap">
+      <table class="tabela">
+        <thead>
+          <tr>
+            <th>ID</th><th>Data/Hora</th><th>Frota</th><th>Placa</th><th>Garagem</th>
+            <th>KM Veículo</th><th>KM Bomba (Ini)</th><th>KM Bomba (Fim)</th><th>Quantidade (L)</th><th>Ações</th>
+          </tr>
+        </thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>
+  `;
+}
+
+/* ---- Liga inputs de busca (LEGADO) ---- */
+document.addEventListener("DOMContentLoaded", () => {
+  const iOS    = document.getElementById("busca-os");
+  const iREQ   = document.getElementById("busca-req");
+  const iABAST = document.getElementById("busca-abast");
+
+  if (iOS)  iOS.addEventListener("input", () => { BUSCA_STATE.os = iOS.value; renderizarTabelaOSFiltrada(); });
+  if (iREQ) iREQ.addEventListener("input", () => { BUSCA_STATE.req = iREQ.value; renderizarTabelaREQFiltrada(); });
+  if (iABAST) iABAST.addEventListener("input", () => { BUSCA_STATE.abast = iABAST.value; renderizarTabelaAbastecimentoFiltrada(); });
+});
+/* =========================================================
+   PARTE 3 / 3 – API helper, inicialização, perfil,
+   menu mobile, logout e EXPORTAR EXCEL (ADMIN)
+========================================================= */
+
+/* =========================
+   API CONFIG + HELPERS
+========================= */
+const API_URL = ''; // backend integrado ao mesmo host
+
+async function api(path, options = {}) {
+  const res = await fetch(`${API_URL}${path}`, {
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+    ...options,
+  });
+
+  // tenta json
+  let data = {};
+  try { data = await res.json(); } catch {}
+
+  if (!res.ok) {
+    throw new Error(data?.error || `Erro HTTP ${res.status}`);
+  }
+  return data;
+}
+
+/* =========================
+   Dashboard principal — via API
 ========================= */
 async function loadDashboard() {
   try {
-    const data = await api("/api/dashboard/summary");
-    if (!data) return;
+    const summary = await api('/api/dashboard/summary');
 
-    // OS
-    if (data.os?.counts) {
-      setText("os-count-aberta",     data.os.counts.aberta);
-      setText("os-count-em-andamento", data.os.counts.andamento);
-      setText("os-count-aguardando", data.os.counts.aguardando);
-      setText("os-count-concluida",  data.os.counts.concluida);
+    // ----- Contadores de OS -----
+    const osCounts = summary?.os?.counts || {};
+    setText('os-count-aberta', osCounts.aberta || 0);
+    setText('os-count-em-andamento', osCounts.andamento || 0);
+    setText('os-count-aguardando', osCounts.aguardando || 0);
+    setText('os-count-concluida', osCounts.concluida || 0);
 
-      if (Array.isArray(data.os.recent)) {
-        const recent = data.os.recent;
-        const cont   = document.querySelector("#lista-vazia")?.parentElement;
-        if (cont) cont.innerHTML =
-          recent.length
-            ? recent
-                .map(os => `<div>• ${os.id || ""} | ${escapeHTML(os.garagem||"")} | ${escapeHTML(os.frota||"")} | ${escapeHTML(os.status||"")}</div>`)
-                .join("")
-            : `<div class="empty-state">Sem registros</div>`;
+    // ----- Últimas OS -----
+    const ultimasOS = summary?.os?.recent || [];
+    const boxOS = document.getElementById('lista-vazia');
+    if (boxOS) {
+      if (!ultimasOS.length) {
+        boxOS.textContent = 'Sem registros';
+      } else {
+        boxOS.innerHTML = '';
+        const ul = document.createElement('ul');
+        ul.style.margin = '0';
+        ul.style.paddingLeft = '16px';
+
+        ultimasOS.forEach(r => {
+          const li = document.createElement('li');
+          li.textContent = `${r.id} — ${r.frota || '-'} — ${r.status}`;
+          ul.appendChild(li);
+        });
+
+        boxOS.appendChild(ul);
       }
     }
 
-    // Requisições
-    if (data.req?.counts) {
-      setText("req-count-aberta",     data.req.counts.aberta);
-      setText("req-count-em-andamento", data.req.counts.andamento);
-      setText("req-count-aguardando", data.req.counts.aguardando);
-      setText("req-count-concluida",  data.req.counts.concluida);
+    // ----- Requisições -----
+    const reqCounts = summary?.req?.counts;
+    if (reqCounts) {
+      setText('req-count-aberta', reqCounts.aberta || 0);
+      setText('req-count-em-andamento', reqCounts.andamento || 0);
+      setText('req-count-aguardando', reqCounts.aguardando || 0);
+      setText('req-count-concluida', reqCounts.concluida || 0);
 
-      if (Array.isArray(data.req.recent)) {
-        const recent = data.req.recent;
-        const el     = document.getElementById("lista-requisicoes");
-        if (el) {
-          el.innerHTML =
-            recent.length
-              ? recent
-                  .map(r => `<div>• ${escapeHTML(r.codigo||"")} | ${escapeHTML(r.material||"")} | ${escapeHTML(r.garagem||"")}</div>`)
-                  .join("")
-              : `<div class="empty-state">Sem registros</div>`;
+      const ultimasReq = summary?.req?.recent || [];
+      const boxReq = document.getElementById('lista-requisicoes');
+
+      if (boxReq) {
+        if (!ultimasReq.length) {
+          boxReq.textContent = 'Sem registros';
+        } else {
+          boxReq.innerHTML = '';
+          const ul = document.createElement('ul');
+          ul.style.margin = '0';
+          ul.style.paddingLeft = '16px';
+
+          ultimasReq.forEach(r => {
+            const li = document.createElement('li');
+            li.textContent = `${r.id} — ${r.material || '-'} — ${r.status}`;
+            ul.appendChild(li);
+          });
+
+          boxReq.appendChild(ul);
         }
       }
     }
+
   } catch (err) {
-    console.error("Erro ao carregar dashboard:", err);
+    console.error('[loadDashboard] erro:', err.message);
   }
-}
-
-/* =========================
-   Tabelas — OS (admin)
-========================= */
-async function renderizarTabelaOSCompleta() {
-  const cont = document.getElementById("tabela-completa-os");
-  if (!cont) return;
-  cont.innerHTML = "Carregando...";
-
-  try {
-    const busca = document.getElementById("busca-os")?.value || "";
-    const data  = await api("/api/os");
-    const lista = Array.isArray(data?.items) ? data.items : [];
-
-    const filtrado = busca
-      ? lista.filter(os =>
-          String(os.id||"").toLowerCase().includes(busca.toLowerCase()) ||
-          String(os.garagem||"").toLowerCase().includes(busca.toLowerCase()) ||
-          String(os.motorista||"").toLowerCase().includes(busca.toLowerCase()) ||
-          String(os.frota||"").toLowerCase().includes(busca.toLowerCase()) ||
-          String(os.tipoServico||"").toLowerCase().includes(busca.toLowerCase())
-        )
-      : lista;
-
-    cont.innerHTML =
-      filtrado.length
-        ? gerarTabelaOS(filtrado)
-        : `<div class="empty-state">Nenhuma OS encontrada.</div>`;
-  } catch (err) {
-    cont.innerHTML = `<div class="empty-state">Erro ao carregar OS.</div>`;
-  }
-}
-
-function gerarTabelaOS(lista) {
-  return `
-    <div class="tabela-wrap">
-      <table class="tabela">
-        <thead>
-          <tr>
-            <th>ID</th>
-            <th>Garagem</th>
-            <th>Motorista</th>
-            <th>Frota</th>
-            <th>KM</th>
-            <th>Serviço</th>
-            <th>Status</th>
-            <th>Abertura</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${lista.map(os => `
-            <tr>
-              <td>${escapeHTML(os.id||"")}</td>
-              <td>${escapeHTML(os.garagem||"")}</td>
-              <td>${escapeHTML(os.motorista||"")}</td>
-              <td>${escapeHTML(os.frota||"")}</td>
-              <td>${escapeHTML(os.km||"")}</td>
-              <td>${escapeHTML(os.tipoServico||"")}</td>
-              <td>${escapeHTML(os.status||"")}</td>
-              <td>${new Date(os.openedAt||os.createdAt||"").toLocaleString("pt-BR")}</td>
-            </tr>
-          `).join("")}
-        </tbody>
-      </table>
-    </div>
-  `;
-}
-
-/* =========================
-   Tabelas — Requisições (admin)
-========================= */
-async function renderizarTabelaREQCompleta() {
-  const cont = document.getElementById("tabela-completa-req");
-  if (!cont) return;
-  cont.innerHTML = "Carregando...";
-
-  try {
-    const busca = document.getElementById("busca-req")?.value || "";
-    const data  = await api("/api/req");
-    const lista = Array.isArray(data?.items) ? data.items : [];
-
-    const filtrado = busca
-      ? lista.filter(r =>
-          String(r.codigo||"").toLowerCase().includes(busca.toLowerCase()) ||
-          String(r.material||"").toLowerCase().includes(busca.toLowerCase()) ||
-          String(r.garagem||"").toLowerCase().includes(busca.toLowerCase()) ||
-          String(r.frota||"").toLowerCase().includes(busca.toLowerCase()) ||
-          String(r.solicitante||"").toLowerCase().includes(busca.toLowerCase())
-        )
-      : lista;
-
-    cont.innerHTML =
-      filtrado.length
-        ? gerarTabelaREQ(filtrado)
-        : `<div class="empty-state">Nenhuma Requisição encontrada.</div>`;
-  } catch (err) {
-    cont.innerHTML = `<div class="empty-state">Erro ao carregar Requisições.</div>`;
-  }
-}
-
-function gerarTabelaREQ(lista) {
-  return `
-    <div class="tabela-wrap">
-      <table class="tabela">
-        <thead>
-          <tr>
-            <th>ID</th>
-            <th>Código</th>
-            <th>Material</th>
-            <th>Qtd</th>
-            <th>Garagem</th>
-            <th>Frota</th>
-            <th>Solicitante</th>
-            <th>Data</th>
-            <th>Status</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${lista.map(r => `
-            <tr>
-              <td>${escapeHTML(r.id||"")}</td>
-              <td>${escapeHTML(r.codigo||"")}</td>
-              <td>${escapeHTML(r.material||"")}</td>
-              <td>${escapeHTML(r.quantidade||"")}</td>
-              <td>${escapeHTML(r.garagem||"")}</td>
-              <td>${escapeHTML(r.frota||"")}</td>
-              <td>${escapeHTML(r.solicitante||"")}</td>
-              <td>${r.data ? new Date(r.data).toLocaleDateString("pt-BR") : ""}</td>
-              <td>${escapeHTML(r.status||"")}</td>
-            </tr>
-          `).join("")}
-        </tbody>
-      </table>
-    </div>
-  `;
-}
-
-/* =========================
-   Tabelas — Abastecimentos (admin)
-========================= */
-async function renderizarTabelaAbastecimentoCompleta() {
-  const cont = document.getElementById("tabela-completa-abast");
-  if (!cont) return;
-  cont.innerHTML = "Carregando...";
-
-  try {
-    const busca = document.getElementById("busca-abast")?.value || "";
-    const data  = await api("/api/abast");
-    const lista = Array.isArray(data?.items) ? data.items : [];
-
-    const filtrado = busca
-      ? lista.filter(a =>
-          String(a.frota||"").toLowerCase().includes(busca.toLowerCase()) ||
-          String(a.kmVeiculo||"").toLowerCase().includes(busca.toLowerCase())
-        )
-      : lista;
-
-    cont.innerHTML =
-      filtrado.length
-        ? gerarTabelaAbast(filtrado)
-        : `<div class="empty-state">Nenhum Abastecimento encontrado.</div>`;
-  } catch (err) {
-    cont.innerHTML = `<div class="empty-state">Erro ao carregar Abastecimentos.</div>`;
-  }
-}
-
-function gerarTabelaAbast(lista) {
-  return `
-    <div class="tabela-wrap">
-      <table class="tabela">
-        <thead>
-          <tr>
-            <th>ID</th>
-            <th>Frota</th>
-            <th>KM Veículo</th>
-            <th>KM Início</th>
-            <th>KM Fim</th>
-            <th>Litros</th>
-            <th>Data/Hora</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${lista.map(a => `
-            <tr>
-              <td>${escapeHTML(a.id||"")}</td>
-              <td>${escapeHTML(a.frota||"")}</td>
-              <td>${escapeHTML(a.kmVeiculo||"")}</td>
-              <td>${escapeHTML(a.kmInicioBomba||"")}</td>
-              <td>${escapeHTML(a.kmFimBomba||"")}</td>
-              <td>${escapeHTML(a.litros||"")}</td>
-              <td>${a.dataHora ? new Date(a.dataHora).toLocaleString("pt-BR") : ""}</td>
-            </tr>
-          `).join("")}
-        </tbody>
-      </table>
-    </div>
-  `;
-}
-/* =========================================================
-   PARTE 3 / 3 — Inicialização, API Helper, Menu Mobile,
-   Controle de Perfil (Admin/Driver), Exportar Excel,
-   Logout e Eventos Finais
-========================================================= */
-
-/* =========================
-   Helpers de API (fetch)
-========================= */
-async function api(url, options = {}) {
-  try {
-    const res = await fetch(url, {
-      credentials: "include",
-      headers: { "Content-Type": "application/json" },
-      ...options,
-    });
-
-    if (!res.ok) {
-      let msg = res.statusText || "Erro";
-      try {
-        const j = await res.json();
-        msg = j.error || msg;
-      } catch {}
-      throw new Error(msg);
-    }
-
-    // Alguns endpoints retornam blob (Excel)
-    const ct = res.headers.get("Content-Type") || "";
-    if (ct.includes("application/vnd.openxmlformats-officedocument")) {
-      return res;
-    }
-
-    return res.json();
-  } catch (err) {
-    console.error("API error:", err);
-    throw err;
-  }
-}
-
-/* =========================
-   Carregar Minhas OS
-========================= */
-async function loadMyOsHistory() {
-  const cont = document.getElementById("tabela-minhas-os");
-  if (!cont) return;
-  cont.innerHTML = "Carregando...";
-
-  try {
-    const data = await api("/api/os?mine=1");
-    const lista = Array.isArray(data?.items) ? data.items : [];
-
-    cont.innerHTML =
-      lista.length
-        ? gerarTabelaMinhasOS(lista)
-        : `<div class="empty-state">Você ainda não abriu nenhuma OS.</div>`;
-  } catch (err) {
-    cont.innerHTML = `<div class="empty-state">Erro ao carregar suas OS.</div>`;
-  }
-}
-
-function gerarTabelaMinhasOS(lista) {
-  return `
-    <div class="tabela-wrap">
-      <table class="tabela">
-        <thead>
-          <tr>
-            <th>ID</th>
-            <th>Garagem</th>
-            <th>Frota</th>
-            <th>KM</th>
-            <th>Serviço</th>
-            <th>Status</th>
-            <th>Abertura</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${lista
-            .map(
-              (os) => `
-            <tr>
-              <td>${escapeHTML(os.id || "")}</td>
-              <td>${escapeHTML(os.garagem || "")}</td>
-              <td>${escapeHTML(os.frota || "")}</td>
-              <td>${escapeHTML(os.km || "")}</td>
-              <td>${escapeHTML(os.tipoServico || "")}</td>
-              <td>${escapeHTML(os.status || "")}</td>
-              <td>${new Date(os.openedAt || os.createdAt || "").toLocaleString(
-                "pt-BR"
-              )}</td>
-            </tr>`
-            )
-            .join("")}
-        </tbody>
-      </table>
-    </div>
-  `;
-}
-
-/* =========================
-   MENU MOBILE (abrir/fechar)
-========================= */
-function configurarMenuMobile() {
-  const btnMenu = document.getElementById("btnMobileMenu");
-  const sidebar = document.getElementById("sidebar");
-  const backdrop = document.getElementById("sidebarBackdrop");
-
-  if (!btnMenu || !sidebar || !backdrop) return;
-
-  btnMenu.addEventListener("click", () => {
-    document.body.classList.toggle("sidebar-open");
-  });
-
-  backdrop.addEventListener("click", () => {
-    document.body.classList.remove("sidebar-open");
-  });
 }
 
 /* =========================
    LOGOUT
 ========================= */
-async function executarLogout() {
-  try {
-    await api("/api/auth/logout", { method: "POST" });
-  } catch {}
-  window.location.href = "/auth";
-}
+document.addEventListener('DOMContentLoaded', () => {
+  const btn = document.getElementById('btnLogout');
+  if (!btn) return;
+
+  if (btn.dataset.wired === '1') return;
+  btn.dataset.wired = '1';
+
+  btn.addEventListener('click', async (ev) => {
+    ev.preventDefault();
+    btn.disabled = true;
+    const prev = btn.textContent;
+    btn.textContent = 'Saindo...';
+
+    try {
+      await api('/api/auth/logout', { method: 'POST', body: JSON.stringify({}) });
+      window.location.href = '/auth';
+    } catch {
+      alert('Não foi possível sair agora.');
+      btn.disabled = false;
+      btn.textContent = prev;
+    }
+  });
+});
 
 /* =========================
-   INICIALIZAÇÃO PRINCIPAL
+   MENU MOBILE (☰)
 ========================= */
+document.addEventListener('DOMContentLoaded', () => {
+  const btn = document.getElementById('btnMobileMenu');
+  const backdrop = document.getElementById('sidebarBackdrop');
+
+  if (!btn || !backdrop) return;
+
+  const openMenu = () => {
+    document.body.classList.add('sidebar-open');
+    backdrop.hidden = false;
+    btn.setAttribute('aria-expanded', 'true');
+  };
+  const closeMenu = () => {
+    document.body.classList.remove('sidebar-open');
+    backdrop.hidden = true;
+    btn.setAttribute('aria-expanded', 'false');
+  };
+
+  btn.addEventListener('click', () => {
+    const isOpen = document.body.classList.contains('sidebar-open');
+    isOpen ? closeMenu() : openMenu();
+  });
+
+  backdrop.addEventListener('click', closeMenu);
+
+  document.querySelector('.menu-items')?.addEventListener('click', () => {
+    if (window.matchMedia('(max-width: 1024px)').matches) closeMenu();
+  });
+
+  window.addEventListener('resize', () => {
+    if (!window.matchMedia('(max-width: 1024px)').matches) closeMenu();
+  });
+});
+
+/* =========================================================
+   INICIALIZAÇÃO PRINCIPAL + PERFIL + EXPORTAR EXCEL
+========================================================= */
 document.addEventListener("DOMContentLoaded", async () => {
-  console.log("Triunfo System — script.js carregado (PARTE 3)");
-
-  /* ---- MENU MOBILE ---- */
-  configurarMenuMobile();
-
-  /* ---- Uniformizar selects ---- */
-  popularSelect("selectGaragem", bancoDeDados.garagens, "Selecione a garagem...");
+  // ---- Popular selects ----
+  popularSelect("selectGaragem", bancoDeDados.garagens, "Escolha uma garagem...");
   popularTipoServico();
   popularSelectsRequisicao();
-  popularSelect("selectGaragemReq", bancoDeDados.garagens);
 
-  /* ---- Eventos de atualização por garagem ---- */
-  const sGar = document.getElementById("selectGaragem");
-  if (sGar) sGar.addEventListener("change", atualizarCamposPorGaragem);
+  // Frota do abastecimento
+  (function popularSelectFrotaAbastecimento() {
+    const s = document.getElementById("selectFrotaAbast");
+    if (!s) return;
+    const frotas = obterFrotasCombinadas();
+    s.innerHTML = `<option value="">Selecione...</option>` +
+      frotas.map(f => `<option value="${f.prefixo}">${f.prefixo} • ${f.placa} • ${f.garagem}</option>`).join("");
+  })();
 
-  const sGarReq = document.getElementById("selectGaragemReq");
-  if (sGarReq) sGarReq.addEventListener("change", atualizarCamposReqPorGaragem);
-
-  /* ---- Botão Abrir OS ---- */
-  const btnsOS = document.querySelectorAll("[data-open-modal='os']");
-  btnsOS.forEach((b) => b.addEventListener("click", abrirModal));
-
-  /* ---- Botão Abrir Requisição ---- */
-  const btnsREQ = document.querySelectorAll("[data-open-modal='req']");
-  btnsREQ.forEach((b) => b.addEventListener("click", abrirModalRequisicao));
-
-  /* ---- Botão Abrir Abastecimento ---- */
-  const btnsABAST = document.querySelectorAll("[data-open-modal='abast']");
-  btnsABAST.forEach((b) => b.addEventListener("click", abrirModalAbastecimento));
-
-  /* ---- Fechar Modais ---- */
-  document.querySelectorAll("[data-close-modal]").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      fecharModal();
-      fecharModalRequisicao();
-      fecharModalAbastecimento();
-    });
-  });
-
-  /* ---- Submit OS ---- */
-  const btnSubmitOS = document.querySelector("[data-submit-os]");
-  if (btnSubmitOS) btnSubmitOS.addEventListener("click", salvarOS);
-
-  /* ---- Submit REQ ---- */
-  const btnSubmitREQ = document.querySelector("[data-submit-req]");
-  if (btnSubmitREQ) btnSubmitREQ.addEventListener("click", salvarRequisicao);
-
-  /* ---- Submit Abastecimento ---- */
-  const btnSubmitABAST = document.querySelector("[data-submit-abast]");
-  if (btnSubmitABAST)
-    btnSubmitABAST.addEventListener("click", salvarAbastecimento);
-
-  /* ---- Logout ---- */
-  const btnLogout = document.getElementById("btnLogout");
-  if (btnLogout) btnLogout.addEventListener("click", executarLogout);
-
-  /* ---- Descobrir perfil do usuário ---- */
-  let perfil = "driver";
+  // ---- Descobrir perfil ----
+  let role = "driver";
   try {
-    const me = await api("/api/auth/me");
-    perfil = me?.user?.role || "driver";
+    const me = await api('/api/auth/me');
+    role = me?.user?.role;
   } catch {
-    return (window.location.href = "/auth");
+    return window.location.href = "/auth";
   }
 
-  /* ---- Ajustar o body para ADMIN ---- */
-  if (perfil === "admin") {
-    document.body.classList.add("admin");
-  }
-
-  /* ---- Navegação inicial ---- */
-  if (perfil === "admin") {
-    alternarTelas("dashboard");
-    await loadDashboard();
-  } else {
-    alternarTelas("minhas-os");
-    await loadMyOsHistory();
-  }
-
-  /* ---- Pesquisa / Buscas ---- */
-  document.getElementById("busca-os")?.addEventListener("input", () => {
-    renderizarTabelaOSCompleta();
-  });
-
-  document.getElementById("busca-req")?.addEventListener("input", () => {
-    renderizarTabelaREQCompleta();
-  });
-
-  document.getElementById("busca-abast")?.addEventListener("input", () => {
-    renderizarTabelaAbastecimentoCompleta();
-  });
-
-  /* ---- NAVEGAÇÃO PELO MENU ---- */
-  document.querySelectorAll("[data-nav-target]").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      const destino = btn.getAttribute("data-nav-target");
-      alternarTelas(destino);
-
-      if (destino === "minhas-os") loadMyOsHistory();
-      if (destino === "dashboard") loadDashboard();
+  // ---- Driver ----
+  if (role === "driver") {
+    document.querySelectorAll(".admin-only").forEach(el => {
+      el.style.display = "none";
+      el.setAttribute("aria-hidden", "true");
     });
+
+    alternarTelas("minhas-os");
+    try { await loadMyOsHistory(); } catch {}
+
+    return; // fim para driver
+  }
+
+  // ---- ADMIN ----
+  document.body.classList.add("admin");
+
+  // Garante exibição correta dos elementos admin-only
+  document.querySelectorAll(".admin-only").forEach(el => {
+    el.style.removeProperty("display");
+    el.removeAttribute("aria-hidden");
   });
 
-  /* =========================
-       🔥 EXPORTAR EXCEL (ADMIN)
-     ========================= */
-  const btnExportExcel = document.getElementById("btnExportExcelOS");
+  alternarTelas("dashboard");
+  try { await atualizarDashboard(); } catch {}
 
-  if (btnExportExcel) {
+  // ====== BOTÃO EXPORTAR EXCEL (APENAS ADMIN) ======
+  const btnExportExcel = document.getElementById("btnExportExcelOS");
+  if (btnExportExcel && !btnExportExcel.dataset.wired) {
+    btnExportExcel.dataset.wired = "1";
     btnExportExcel.addEventListener("click", () => {
-      // Admin força o download
       window.location.href = "/api/os/export.xlsx";
     });
   }
 
-}); // FIM do DOMContentLoaded
+}); // fim do DOMContentLoaded PRINCIPAL
