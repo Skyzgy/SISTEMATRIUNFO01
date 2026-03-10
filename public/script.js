@@ -9,10 +9,6 @@
    - Tela inicial por perfil (driver → ‘minhas-os’; admin → ‘dashboard’)
    - Logout
    - Mobile menu (☰) – abrir/fechar sidebar no celular
-   - Correções:
-      • fechaTodasModais() para evitar sobreposição
-      • fechamento garantido (Cancelar, X, clique fora e ESC)
-      • reforço de admin-only + botão Exportar Excel (apenas admin)
    ========================================================= */
 
 "use strict";
@@ -107,7 +103,6 @@ function ISOparaBR(isoStr) {
   return `${d}/${m}/${y}`;
 }
 function escapeHTML(str) {
-  // Mantido do seu original (mesmo comportamento de antes)
   return String(str)
     .replace(/&amp;/g,"&amp;amp;").replace(/&lt;/g,"&amp;lt;").replace(/&gt;/g,"&amp;gt;")
     .replace(/"/g,"&amp;quot;").replace(/'/g,"&amp;#039;");
@@ -123,21 +118,10 @@ function obterFrotasCombinadas(){ const out=[]; Object.entries(bancoDeDados.veic
 ========================= */
 let ultimoFoco = null;
 
-/* 🔧 NOVO: fecha TODAS as modais para evitar sobreposição */
-function fecharTodasModais() {
-  ["modalOS", "modalRequisicao", "modalAbastecimento"].forEach(id => {
-    const m = document.getElementById(id);
-    if (m) m.classList.remove("active");
-  });
-  document.body.classList.remove("no-scroll");
-  try { ultimoFoco?.focus(); } catch {}
-}
-
 /* =========================
    Modais - OS
 ========================= */
 function abrirModal() {
-  fecharTodasModais(); // evita sobrepor com outras modais
   const overlay = document.getElementById("modalOS");
   if (!overlay) return;
   overlay.classList.add("active");
@@ -172,7 +156,6 @@ function fecharModal() {
    Modais - Requisição
 ========================= */
 function abrirModalRequisicao() {
-  fecharTodasModais();
   const overlay = document.getElementById("modalRequisicao");
   if (!overlay) return;
   overlay.classList.add("active");
@@ -211,7 +194,6 @@ function fecharModalRequisicao() {
    Modais - Abastecimento
 ========================= */
 function abrirModalAbastecimento() {
-  fecharTodasModais();
   const overlay = document.getElementById("modalAbastecimento");
   if (!overlay) return;
   overlay.classList.add("active");
@@ -314,7 +296,61 @@ function popularSelectsRequisicao() {
   if (sF) sF.innerHTML = `<option value="">Selecione a garagem primeiro...</option>`;
   if (sS) sS.innerHTML = `<option value="">Selecione a garagem primeiro...</option>`;
 }
-``
+/* =========================
+   Update por GARAGEM
+========================= */
+function atualizarCamposPorGaragem() {
+  const g = document.getElementById("selectGaragem").value;
+  const sMot = document.getElementById("selectMotorista");
+  const sFrota = document.getElementById("selectFrota");
+
+  if (!g) {
+    if (sMot)  sMot.innerHTML  = `<option value="">Selecione a garagem primeiro...</option>`;
+    if (sFrota) sFrota.innerHTML = `<option value="">Selecione a garagem primeiro...</option>`;
+    return;
+  }
+
+  const motoristas = bancoDeDados.motoristas[g] || [];
+  const frotas     = bancoDeDados.veiculos[g]   || [];
+
+  if (sMot) {
+    sMot.innerHTML =
+      `<option value="">Selecione...</option>` +
+      motoristas.map(m => `<option value="${m}">${m}</option>`).join("");
+  }
+  if (sFrota) {
+    sFrota.innerHTML =
+      `<option value="">Selecione...</option>` +
+      frotas.map(v => `<option value="${v.prefixo}">${v.prefixo} • ${v.placa}</option>`).join("");
+  }
+}
+
+function atualizarCamposReqPorGaragem() {
+  const g     = document.getElementById("selectGaragemReq").value;
+  const sFrot = document.getElementById("selectFrotaReq");
+  const sSol  = document.getElementById("selectSolicitanteReq");
+
+  if (!g) {
+    if (sFrot) sFrot.innerHTML = `<option value="">Selecione a garagem primeiro...</option>`;
+    if (sSol)  sSol.innerHTML  = `<option value="">Selecione a garagem primeiro...</option>`;
+    return;
+  }
+
+  const frotas = bancoDeDados.veiculos[g] || [];
+  if (sFrot) {
+    sFrot.innerHTML =
+      `<option value="">Selecione...</option>` +
+      frotas.map(v => `<option value="${v.prefixo}">${v.prefixo} • ${v.placa}</option>`).join("");
+  }
+
+  const equipe = solicitantesPorGaragem[g] || [];
+  if (sSol) {
+    sSol.innerHTML =
+      `<option value="">Selecione...</option>` +
+      equipe.map(n => `<option value="${n}">${n}</option>`).join("");
+  }
+}
+
 /* =========================
    Salvar OS/REQ/ABAST – via API
 ========================= */
@@ -332,6 +368,7 @@ async function salvarOS() {
   if (km === "" || Number.isNaN(Number(km)) || Number(km) < 0) erros.push("Informe um KM válido (>= 0).");
   if (!servico) erros.push("Selecione o tipo de serviço.");
   if (!descricao) erros.push("Descreva o problema.");
+
   if (erros.length) { alert("Verifique os campos:\n- " + erros.join("\n- ")); return; }
 
   const btn  = document.querySelector('[data-submit-os]');
@@ -379,6 +416,7 @@ async function salvarRequisicao() {
   if (!dataISO) erros.push("Selecione a data.");
   if (!codigo)  erros.push("Informe o código.");
   if (!descricao) erros.push("Informe a descrição.");
+
   if (erros.length) { alert("Verifique os campos:\n- " + erros.join("\n- ")); return; }
 
   const btn  = document.querySelector('[data-submit-req]');
@@ -427,6 +465,7 @@ async function salvarAbastecimento() {
   if (kmFim === "" || nFim < 0) erros.push("Informe o KM final da bomba (>= 0).");
   if (!Number.isNaN(nIni) && !Number.isNaN(nFim) && nFim < nIni) erros.push("KM final da bomba >= KM inicial.");
   if (!quantidade || Number(quantidade) <= 0) erros.push("Informe a quantidade (litros > 0).");
+
   if (erros.length) { alert("Verifique os campos:\n- " + erros.join("\n- ")); return; }
 
   const btn  = document.querySelector('[data-submit-abast]');
@@ -469,7 +508,6 @@ async function atualizarDashboard() {
   }
 }
 
-/* Render auxiliar (não utilizado no fluxo atual, mantido) */
 function renderUltimasOS(container, dados) {
   if (!container) return;
   container.innerHTML = "";
@@ -634,6 +672,72 @@ function renderizarTabelaAbastecimentoCompleta() {
       </table>
     </div>
   `;
+}
+
+/* =========================
+   Ações (LEGADO – localStorage)
+========================= */
+function alterarStatusOS(id, novo, indexFallback = -1) {
+  let idx = ordensServico.findIndex(x => x.id === id);
+  if (idx < 0) idx = indexFallback;
+  if (idx < 0 || !ordensServico[idx]) return;
+
+  ordensServico[idx].status = normalizarStatus(novo);
+  salvarLista(STORAGE_KEYS.OS, ordensServico);
+
+  renderizarTabelaOSCompleta();
+  atualizarDashboard();
+}
+function concluirOS(id, indexFallback = -1) { alterarStatusOS(id, "CONCLUÍDA", indexFallback); }
+function removerOS(id, indexFallback = -1) {
+  let idx = ordensServico.findIndex(x => x.id === id);
+  if (idx < 0) idx = indexFallback;
+  if (idx < 0 || !ordensServico[idx]) return;
+  if (!confirm(`Remover ${ordensServico[idx].id}? Esta ação não pode ser desfeita.`)) return;
+
+  ordensServico.splice(idx, 1);
+  salvarLista(STORAGE_KEYS.OS, ordensServico);
+
+  renderizarTabelaOSCompleta();
+  atualizarDashboard();
+}
+
+function alterarStatusREQ(id, novo, indexFallback = -1) {
+  let idx = requisicoes.findIndex(x => x.id === id);
+  if (idx < 0) idx = indexFallback;
+  if (idx < 0 || !requisicoes[idx]) return;
+
+  requisicoes[idx].status = normalizarStatus(novo);
+  salvarLista(STORAGE_KEYS.REQ, requisicoes);
+
+  renderizarTabelaREQCompleta();
+  atualizarDashboard();
+}
+function concluirREQ(id, indexFallback = -1) { alterarStatusREQ(id, "CONCLUÍDA", indexFallback); }
+function removerREQ(id, indexFallback = -1) {
+  let idx = requisicoes.findIndex(x => x.id === id);
+  if (idx < 0) idx = indexFallback;
+  if (idx < 0 || !requisicoes[idx]) return;
+  if (!confirm(`Remover ${requisicoes[idx].id}? Esta ação não pode ser desfeita.`)) return;
+
+  requisicoes.splice(idx, 1);
+  salvarLista(STORAGE_KEYS.REQ, requisicoes);
+
+  renderizarTabelaREQCompleta();
+  atualizarDashboard();
+}
+
+function removerAbastecimento(id, indexFallback = -1) {
+  let idx = abastecimentos.findIndex(x => x.id === id);
+  if (idx < 0) idx = indexFallback;
+  if (idx < 0 || !abastecimentos[idx]) return;
+  if (!confirm(`Remover ${abastecimentos[idx].id}? Esta ação não pode ser desfeita.`)) return;
+
+  abastecimentos.splice(idx, 1);
+  salvarLista(STORAGE_KEYS.ABAST, abastecimentos);
+
+  renderizarTabelaAbastecimentoCompleta();
+  atualizarDashboard();
 }
 
 /* =========================
@@ -818,12 +922,11 @@ document.addEventListener("DOMContentLoaded", () => {
   if (iREQ) iREQ.addEventListener("input", () => { BUSCA_STATE.req = iREQ.value; renderizarTabelaREQFiltrada(); });
   if (iABAST) iABAST.addEventListener("input", () => { BUSCA_STATE.abast = iABAST.value; renderizarTabelaAbastecimentoFiltrada(); });
 });
-
 /* =========================
    Event wiring + Inicialização
 ========================= */
 document.addEventListener("DOMContentLoaded", async () => {
-  // Navegação por data-nav-target
+  // Nav por data-nav-target
   document.querySelectorAll("[data-nav-target]").forEach(btn => {
     btn.addEventListener("click", () => alternarTelas(btn.dataset.navTarget));
   });
@@ -838,30 +941,33 @@ document.addEventListener("DOMContentLoaded", async () => {
     });
   });
 
-  // Fechar modais (botões com data-close-modal)
+  // Fechar modais
   document.querySelectorAll("[data-close-modal]").forEach(btn => {
     btn.addEventListener("click", () => {
-      fecharTodasModais(); // 🔧 fecha qualquer modal aberta
+      const modal = btn.closest(".modal-overlay");
+      if (!modal) return;
+      if (modal.id === "modalOS")             fecharModal();
+      if (modal.id === "modalRequisicao")     fecharModalRequisicao();
+      if (modal.id === "modalAbastecimento")  fecharModalAbastecimento();
     });
   });
 
-  // Clique no backdrop fecha (quando o target é a própria overlay)
+  // Clique fora fecha modais
   document.addEventListener("click", (e) => {
-    const ids = ["modalOS","modalRequisicao","modalAbastecimento"];
-    for (const id of ids) {
-      if (e.target === document.getElementById(id)) {
-        fecharTodasModais(); // 🔧
-        break;
-      }
-    }
+    const mOS  = document.getElementById("modalOS");
+    const mRQ  = document.getElementById("modalRequisicao");
+    const mAB  = document.getElementById("modalAbastecimento");
+    if (e.target === mOS) fecharModal();
+    if (e.target === mRQ) fecharModalRequisicao();
+    if (e.target === mAB) fecharModalAbastecimento();
   });
 
-  // ESC fecha modal
+  // ESC fecha modais
   document.addEventListener("keydown", (e) => {
     if (e.key !== "Escape") return;
-    const algumaAberta = ["modalOS","modalRequisicao","modalAbastecimento"]
-      .some(id => document.getElementById(id)?.classList.contains("active"));
-    if (algumaAberta) fecharTodasModais(); // 🔧
+    if (document.getElementById("modalOS")?.classList.contains("active"))            fecharModal();
+    if (document.getElementById("modalRequisicao")?.classList.contains("active"))    fecharModalRequisicao();
+    if (document.getElementById("modalAbastecimento")?.classList.contains("active")) fecharModalAbastecimento();
   });
 
   // Trap de foco
@@ -946,7 +1052,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   /* ======== TELA INICIAL POR PERFIL ======== */
   try {
-    const me = await api('/api/auth/me');   // exige sessão
+    const me = await api('/api/auth/me');       // exige sessão
     const role = me?.user?.role;
 
     if (role === 'driver') {
@@ -960,37 +1066,50 @@ document.addEventListener("DOMContentLoaded", async () => {
 
       // Carrega a seção
       if (typeof loadMyOsHistory === 'function') {
-        try { await loadMyOsHistory(); } catch {}
+        try { await loadMyOsHistory(); } catch(e) {}
       }
     } else {
-      // ADMIN
+      // Admin → Dashboard
+      alternarTelas('dashboard');
+      try { await atualizarDashboard(); } catch(e) {}
+    }
+  } catch (e) {
+    // Sem sessão: fluxo normal leva para /auth
+  }
+
+  // ===== Complemento pós-perfil: reforçar admin-only + Exportar Excel (somente Admin) =====
+  try {
+    const me2 = await api('/api/auth/me'); // reaproveita sessão já válida
+    const role2 = me2?.user?.role;
+
+    if (role2 === 'admin') {
+      // Garante visibilidade dos elementos admin-only (se algum CSS ocultou)
       document.body.classList.add('admin');
       document.querySelectorAll('.admin-only').forEach(el => {
         el.style.removeProperty('display');
         el.removeAttribute('aria-hidden');
       });
 
-      alternarTelas('dashboard');
-      try { await atualizarDashboard(); } catch {}
-
-      // 🔥 Botão Exportar Excel (somente Admin)
-      const btnExportExcel = document.getElementById("btnExportExcelOS");
-      if (btnExportExcel && !btnExportExcel.dataset.wired) {
-        btnExportExcel.dataset.wired = "1";
-        btnExportExcel.addEventListener("click", () => {
-          window.location.href = "/api/os/export.xlsx";
+      // Botão "Exportar Excel" – somente Admin
+      const btnExportExcelOS = document.getElementById('btnExportExcelOS');
+      if (btnExportExcelOS && !btnExportExcelOS.dataset.wired) {
+        btnExportExcelOS.dataset.wired = '1';
+        btnExportExcelOS.addEventListener('click', () => {
+          // Futuro: podemos passar filtros por querystring se quiser
+          window.location.href = '/api/os/export.xlsx';
         });
       }
     }
-  } catch {
-    window.location.href = '/auth';
+  } catch (_) {
+    // silencioso: fluxo já tratado acima
   }
 });
 
 /* =========================
    API CONFIG + HELPERS
 ========================= */
-const API_URL = ''; // mesmo host
+// MESMO host (Railway serve front + API)
+const API_URL = ''; // se front for separado, aponte para a URL do backend
 
 async function api(path, options = {}) {
   const res = await fetch(`${API_URL}${path}`, {
