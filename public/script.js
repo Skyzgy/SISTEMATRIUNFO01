@@ -9,6 +9,10 @@
    - Tela inicial por perfil (driver → ‘minhas-os’; admin → ‘dashboard’)
    - Logout
    - Mobile menu (☰) – abrir/fechar sidebar no celular
+   - Correções:
+      • fechaTodasModais() para evitar sobreposição
+      • fechamento garantido (Cancelar, X, clique fora e ESC)
+      • reforço de admin-only + botão Exportar Excel (apenas admin)
    ========================================================= */
 
 "use strict";
@@ -119,10 +123,21 @@ function obterFrotasCombinadas(){ const out=[]; Object.entries(bancoDeDados.veic
 ========================= */
 let ultimoFoco = null;
 
+/* 🔧 NOVO: fecha TODAS as modais para evitar sobreposição */
+function fecharTodasModais() {
+  ["modalOS", "modalRequisicao", "modalAbastecimento"].forEach(id => {
+    const m = document.getElementById(id);
+    if (m) m.classList.remove("active");
+  });
+  document.body.classList.remove("no-scroll");
+  try { ultimoFoco?.focus(); } catch {}
+}
+
 /* =========================
    Modais - OS
 ========================= */
 function abrirModal() {
+  fecharTodasModais(); // evita sobrepor com outras modais
   const overlay = document.getElementById("modalOS");
   if (!overlay) return;
   overlay.classList.add("active");
@@ -157,6 +172,7 @@ function fecharModal() {
    Modais - Requisição
 ========================= */
 function abrirModalRequisicao() {
+  fecharTodasModais();
   const overlay = document.getElementById("modalRequisicao");
   if (!overlay) return;
   overlay.classList.add("active");
@@ -195,6 +211,7 @@ function fecharModalRequisicao() {
    Modais - Abastecimento
 ========================= */
 function abrirModalAbastecimento() {
+  fecharTodasModais();
   const overlay = document.getElementById("modalAbastecimento");
   if (!overlay) return;
   overlay.classList.add("active");
@@ -297,62 +314,7 @@ function popularSelectsRequisicao() {
   if (sF) sF.innerHTML = `<option value="">Selecione a garagem primeiro...</option>`;
   if (sS) sS.innerHTML = `<option value="">Selecione a garagem primeiro...</option>`;
 }
-
-/* =========================
-   Update por GARAGEM
-========================= */
-function atualizarCamposPorGaragem() {
-  const g = document.getElementById("selectGaragem").value;
-  const sMot = document.getElementById("selectMotorista");
-  const sFrota = document.getElementById("selectFrota");
-
-  if (!g) {
-    if (sMot)  sMot.innerHTML  = `<option value="">Selecione a garagem primeiro...</option>`;
-    if (sFrota) sFrota.innerHTML = `<option value="">Selecione a garagem primeiro...</option>`;
-    return;
-  }
-
-  const motoristas = bancoDeDados.motoristas[g] || [];
-  const frotas     = bancoDeDados.veiculos[g]   || [];
-
-  if (sMot) {
-    sMot.innerHTML =
-      `<option value="">Selecione...</option>` +
-      motoristas.map(m => `<option value="${m}">${m}</option>`).join("");
-  }
-  if (sFrota) {
-    sFrota.innerHTML =
-      `<option value="">Selecione...</option>` +
-      frotas.map(v => `<option value="${v.prefixo}">${v.prefixo} • ${v.placa}</option>`).join("");
-  }
-}
-
-function atualizarCamposReqPorGaragem() {
-  const g     = document.getElementById("selectGaragemReq").value;
-  const sFrot = document.getElementById("selectFrotaReq");
-  const sSol  = document.getElementById("selectSolicitanteReq");
-
-  if (!g) {
-    if (sFrot) sFrot.innerHTML = `<option value="">Selecione a garagem primeiro...</option>`;
-    if (sSol)  sSol.innerHTML  = `<option value="">Selecione a garagem primeiro...</option>`;
-    return;
-  }
-
-  const frotas = bancoDeDados.veiculos[g] || [];
-  if (sFrot) {
-    sFrot.innerHTML =
-      `<option value="">Selecione...</option>` +
-      frotas.map(v => `<option value="${v.prefixo}">${v.prefixo} • ${v.placa}</option>`).join("");
-  }
-
-  const equipe = solicitantesPorGaragem[g] || [];
-  if (sSol) {
-    sSol.innerHTML =
-      `<option value="">Selecione...</option>` +
-      equipe.map(n => `<option value="${n}">${n}</option>`).join("");
-  }
-}
-
+``
 /* =========================
    Salvar OS/REQ/ABAST – via API
 ========================= */
@@ -370,7 +332,6 @@ async function salvarOS() {
   if (km === "" || Number.isNaN(Number(km)) || Number(km) < 0) erros.push("Informe um KM válido (>= 0).");
   if (!servico) erros.push("Selecione o tipo de serviço.");
   if (!descricao) erros.push("Descreva o problema.");
-
   if (erros.length) { alert("Verifique os campos:\n- " + erros.join("\n- ")); return; }
 
   const btn  = document.querySelector('[data-submit-os]');
@@ -418,7 +379,6 @@ async function salvarRequisicao() {
   if (!dataISO) erros.push("Selecione a data.");
   if (!codigo)  erros.push("Informe o código.");
   if (!descricao) erros.push("Informe a descrição.");
-
   if (erros.length) { alert("Verifique os campos:\n- " + erros.join("\n- ")); return; }
 
   const btn  = document.querySelector('[data-submit-req]');
@@ -467,6 +427,7 @@ async function salvarAbastecimento() {
   if (kmFim === "" || nFim < 0) erros.push("Informe o KM final da bomba (>= 0).");
   if (!Number.isNaN(nIni) && !Number.isNaN(nFim) && nFim < nIni) erros.push("KM final da bomba >= KM inicial.");
   if (!quantidade || Number(quantidade) <= 0) erros.push("Informe a quantidade (litros > 0).");
+  if (erros.length) { alert("Verifique os campos:\n- " + erros.join("\n- ")); return; }
 
   const btn  = document.querySelector('[data-submit-abast]');
   const prev = btn?.textContent;
@@ -494,9 +455,6 @@ async function salvarAbastecimento() {
     if (btn) { btn.disabled = false; btn.textContent = prev; }
   }
 }
-/* =========================================================
-   PARTE 2 / 3 — Dashboard, tabelas legadas, ações e buscas
-========================================================= */
 
 /* =========================
    Dashboard (via API)
@@ -511,6 +469,7 @@ async function atualizarDashboard() {
   }
 }
 
+/* Render auxiliar (não utilizado no fluxo atual, mantido) */
 function renderUltimasOS(container, dados) {
   if (!container) return;
   container.innerHTML = "";
@@ -675,72 +634,6 @@ function renderizarTabelaAbastecimentoCompleta() {
       </table>
     </div>
   `;
-}
-
-/* =========================
-   Ações (LEGADO – localStorage)
-========================= */
-function alterarStatusOS(id, novo, indexFallback = -1) {
-  let idx = ordensServico.findIndex(x => x.id === id);
-  if (idx < 0) idx = indexFallback;
-  if (idx < 0 || !ordensServico[idx]) return;
-
-  ordensServico[idx].status = normalizarStatus(novo);
-  salvarLista(STORAGE_KEYS.OS, ordensServico);
-
-  renderizarTabelaOSCompleta();
-  atualizarDashboard();
-}
-function concluirOS(id, indexFallback = -1) { alterarStatusOS(id, "CONCLUÍDA", indexFallback); }
-function removerOS(id, indexFallback = -1) {
-  let idx = ordensServico.findIndex(x => x.id === id);
-  if (idx < 0) idx = indexFallback;
-  if (idx < 0 || !ordensServico[idx]) return;
-  if (!confirm(`Remover ${ordensServico[idx].id}? Esta ação não pode ser desfeita.`)) return;
-
-  ordensServico.splice(idx, 1);
-  salvarLista(STORAGE_KEYS.OS, ordensServico);
-
-  renderizarTabelaOSCompleta();
-  atualizarDashboard();
-}
-
-function alterarStatusREQ(id, novo, indexFallback = -1) {
-  let idx = requisicoes.findIndex(x => x.id === id);
-  if (idx < 0) idx = indexFallback;
-  if (idx < 0 || !requisicoes[idx]) return;
-
-  requisicoes[idx].status = normalizarStatus(novo);
-  salvarLista(STORAGE_KEYS.REQ, requisicoes);
-
-  renderizarTabelaREQCompleta();
-  atualizarDashboard();
-}
-function concluirREQ(id, indexFallback = -1) { alterarStatusREQ(id, "CONCLUÍDA", indexFallback); }
-function removerREQ(id, indexFallback = -1) {
-  let idx = requisicoes.findIndex(x => x.id === id);
-  if (idx < 0) idx = indexFallback;
-  if (idx < 0 || !requisicoes[idx]) return;
-  if (!confirm(`Remover ${requisicoes[idx].id}? Esta ação não pode ser desfeita.`)) return;
-
-  requisicoes.splice(idx, 1);
-  salvarLista(STORAGE_KEYS.REQ, requisicoes);
-
-  renderizarTabelaREQCompleta();
-  atualizarDashboard();
-}
-
-function removerAbastecimento(id, indexFallback = -1) {
-  let idx = abastecimentos.findIndex(x => x.id === id);
-  if (idx < 0) idx = indexFallback;
-  if (idx < 0 || !abastecimentos[idx]) return;
-  if (!confirm(`Remover ${abastecimentos[idx].id}? Esta ação não pode ser desfeita.`)) return;
-
-  abastecimentos.splice(idx, 1);
-  salvarLista(STORAGE_KEYS.ABAST, abastecimentos);
-
-  renderizarTabelaAbastecimentoCompleta();
-  atualizarDashboard();
 }
 
 /* =========================
@@ -915,7 +808,7 @@ function renderizarTabelaAbastecimentoFiltrada() {
   `;
 }
 
-/* ---- Liga inputs de busca (LEGADO) ---- */
+/* ---- Liga inputs de busca ---- */
 document.addEventListener("DOMContentLoaded", () => {
   const iOS    = document.getElementById("busca-os");
   const iREQ   = document.getElementById("busca-req");
@@ -925,100 +818,245 @@ document.addEventListener("DOMContentLoaded", () => {
   if (iREQ) iREQ.addEventListener("input", () => { BUSCA_STATE.req = iREQ.value; renderizarTabelaREQFiltrada(); });
   if (iABAST) iABAST.addEventListener("input", () => { BUSCA_STATE.abast = iABAST.value; renderizarTabelaAbastecimentoFiltrada(); });
 });
-/* =========================================================
-   PARTE 3 / 3 – API helper, inicialização, perfil,
-   menu mobile, logout e EXPORTAR EXCEL (ADMIN)
-========================================================= */
+
+/* =========================
+   Event wiring + Inicialização
+========================= */
+document.addEventListener("DOMContentLoaded", async () => {
+  // Navegação por data-nav-target
+  document.querySelectorAll("[data-nav-target]").forEach(btn => {
+    btn.addEventListener("click", () => alternarTelas(btn.dataset.navTarget));
+  });
+
+  // Abrir modais
+  document.querySelectorAll("[data-open-modal]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const tipo = btn.dataset.openModal;
+      if (tipo === "os")    abrirModal();
+      if (tipo === "req")   abrirModalRequisicao();
+      if (tipo === "abast") abrirModalAbastecimento();
+    });
+  });
+
+  // Fechar modais (botões com data-close-modal)
+  document.querySelectorAll("[data-close-modal]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      fecharTodasModais(); // 🔧 fecha qualquer modal aberta
+    });
+  });
+
+  // Clique no backdrop fecha (quando o target é a própria overlay)
+  document.addEventListener("click", (e) => {
+    const ids = ["modalOS","modalRequisicao","modalAbastecimento"];
+    for (const id of ids) {
+      if (e.target === document.getElementById(id)) {
+        fecharTodasModais(); // 🔧
+        break;
+      }
+    }
+  });
+
+  // ESC fecha modal
+  document.addEventListener("keydown", (e) => {
+    if (e.key !== "Escape") return;
+    const algumaAberta = ["modalOS","modalRequisicao","modalAbastecimento"]
+      .some(id => document.getElementById(id)?.classList.contains("active"));
+    if (algumaAberta) fecharTodasModais(); // 🔧
+  });
+
+  // Trap de foco
+  ["modalOS", "modalRequisicao", "modalAbastecimento"].forEach(id => {
+    const modal = document.getElementById(id);
+    if (!modal) return;
+    modal.addEventListener("keydown", (e) => { if (e.key === "Tab") trapFocus(modal, e); });
+  });
+
+  // Submits via Enter nas modais
+  document.getElementById("modalOS")?.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+      const tag = document.activeElement?.tagName?.toLowerCase();
+      if (tag === "textarea" || tag === "select") return;
+      salvarOS();
+    }
+  });
+  document.getElementById("modalRequisicao")?.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+      const tag = document.activeElement?.tagName?.toLowerCase();
+      if (tag === "textarea" || tag === "select") return;
+      salvarRequisicao();
+    }
+  });
+  document.getElementById("modalAbastecimento")?.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+      const tag = document.activeElement?.tagName?.toLowerCase();
+      if (tag === "textarea" || tag === "select") return;
+      salvarAbastecimento();
+    }
+  });
+
+  // Dependentes de garagem
+  document.getElementById("selectGaragem")?.addEventListener("change", atualizarCamposPorGaragem);
+  document.getElementById("selectGaragemReq")?.addEventListener("change", atualizarCamposReqPorGaragem);
+
+  // Botões submit
+  document.querySelector("[data-submit-os]")?.addEventListener("click", salvarOS);
+  document.querySelector("[data-submit-req]")?.addEventListener("click", salvarRequisicao);
+  document.querySelector("[data-submit-abast]")?.addEventListener("click", salvarAbastecimento);
+
+  // Migração leve (legado localStorage)
+  let migrated = false;
+  ordensServico = (ordensServico || []).map((o) => {
+    const n = { ...o };
+    if (!n.id) { n.id = gerarId("OS"); migrated = true; }
+    n.status = normalizarStatus(n.status);
+    if (!n.dataBR && n.data) { try { n.dataBR = formatarDataBR(new Date(n.data)); } catch {} }
+    return n;
+  });
+  requisicoes = (requisicoes || []).map((r) => {
+    const n = { ...r };
+    if (!n.id) { n.id = gerarId("REQ"); migrated = true; }
+    n.status = normalizarStatus(n.status);
+    if (n.unidade && !n.quantidade) {
+      const num = Number(String(n.unidade).replace(",", "."));
+      if (!Number.isNaN(num) && num > 0) n.quantidade = num;
+    }
+    return n;
+  });
+  if (migrated) {
+    salvarLista(STORAGE_KEYS.OS, ordensServico);
+    salvarLista(STORAGE_KEYS.REQ, requisicoes);
+  }
+
+  // Selects iniciais
+  popularSelect("selectGaragem", bancoDeDados.garagens, "Escolha uma garagem...");
+  popularTipoServico();
+  popularSelectsRequisicao();
+
+  const inputDataReq = document.getElementById("inputDataReq");
+  if (inputDataReq && !inputDataReq.value) inputDataReq.value = toISODateString(new Date());
+
+  // Popular Frota no Abastecimento
+  (function popularSelectFrotaAbastecimento() {
+    const s = document.getElementById("selectFrotaAbast");
+    if (!s) return;
+    const frotas = obterFrotasCombinadas();
+    s.innerHTML = `<option value="">Selecione...</option>` +
+      frotas.map(f => `<option value="${f.prefixo}">${f.prefixo} • ${f.placa} • ${f.garagem}</option>`).join("");
+  })();
+
+  /* ======== TELA INICIAL POR PERFIL ======== */
+  try {
+    const me = await api('/api/auth/me');   // exige sessão
+    const role = me?.user?.role;
+
+    if (role === 'driver') {
+      // Esconde tudo de admin
+      document.querySelectorAll('.admin-only').forEach(el => {
+        el.style.display = 'none';
+        el.setAttribute('aria-hidden','true');
+      });
+      // Vai direto para “Minhas OS”
+      alternarTelas('minhas-os');
+
+      // Carrega a seção
+      if (typeof loadMyOsHistory === 'function') {
+        try { await loadMyOsHistory(); } catch {}
+      }
+    } else {
+      // ADMIN
+      document.body.classList.add('admin');
+      document.querySelectorAll('.admin-only').forEach(el => {
+        el.style.removeProperty('display');
+        el.removeAttribute('aria-hidden');
+      });
+
+      alternarTelas('dashboard');
+      try { await atualizarDashboard(); } catch {}
+
+      // 🔥 Botão Exportar Excel (somente Admin)
+      const btnExportExcel = document.getElementById("btnExportExcelOS");
+      if (btnExportExcel && !btnExportExcel.dataset.wired) {
+        btnExportExcel.dataset.wired = "1";
+        btnExportExcel.addEventListener("click", () => {
+          window.location.href = "/api/os/export.xlsx";
+        });
+      }
+    }
+  } catch {
+    window.location.href = '/auth';
+  }
+});
 
 /* =========================
    API CONFIG + HELPERS
 ========================= */
-const API_URL = ''; // backend integrado ao mesmo host
+const API_URL = ''; // mesmo host
 
 async function api(path, options = {}) {
   const res = await fetch(`${API_URL}${path}`, {
     headers: { 'Content-Type': 'application/json' },
     credentials: 'include',
-    ...options,
+    ...options
   });
-
-  // tenta json
   let data = {};
   try { data = await res.json(); } catch {}
-
-  if (!res.ok) {
-    throw new Error(data?.error || `Erro HTTP ${res.status}`);
-  }
+  if (!res.ok) throw new Error(data?.error || `Erro HTTP ${res.status}`);
   return data;
 }
 
-/* =========================
-   Dashboard principal — via API
-========================= */
 async function loadDashboard() {
   try {
     const summary = await api('/api/dashboard/summary');
 
-    // ----- Contadores de OS -----
     const osCounts = summary?.os?.counts || {};
-    setText('os-count-aberta', osCounts.aberta || 0);
+    setText('os-count-aberta',       osCounts.aberta    || 0);
     setText('os-count-em-andamento', osCounts.andamento || 0);
-    setText('os-count-aguardando', osCounts.aguardando || 0);
-    setText('os-count-concluida', osCounts.concluida || 0);
+    setText('os-count-aguardando',   osCounts.aguardando|| 0);
+    setText('os-count-concluida',    osCounts.concluida || 0);
 
-    // ----- Últimas OS -----
-    const ultimasOS = summary?.os?.recent || [];
-    const boxOS = document.getElementById('lista-vazia');
-    if (boxOS) {
-      if (!ultimasOS.length) {
-        boxOS.textContent = 'Sem registros';
+    const ultimasOSBox = document.getElementById('lista-vazia');
+    if (ultimasOSBox) {
+      const items = summary?.os?.recent || [];
+      if (!items.length) {
+        ultimasOSBox.textContent = 'Sem registros';
       } else {
-        boxOS.innerHTML = '';
+        ultimasOSBox.innerHTML = '';
         const ul = document.createElement('ul');
-        ul.style.margin = '0';
-        ul.style.paddingLeft = '16px';
-
-        ultimasOS.forEach(r => {
+        ul.style.margin = '0'; ul.style.paddingLeft = '16px';
+        items.forEach(r => {
           const li = document.createElement('li');
           li.textContent = `${r.id} — ${r.frota || '-'} — ${r.status}`;
           ul.appendChild(li);
         });
-
-        boxOS.appendChild(ul);
+        ultimasOSBox.appendChild(ul);
       }
     }
 
-    // ----- Requisições -----
     const reqCounts = summary?.req?.counts;
     if (reqCounts) {
-      setText('req-count-aberta', reqCounts.aberta || 0);
+      setText('req-count-aberta',       reqCounts.aberta    || 0);
       setText('req-count-em-andamento', reqCounts.andamento || 0);
-      setText('req-count-aguardando', reqCounts.aguardando || 0);
-      setText('req-count-concluida', reqCounts.concluida || 0);
+      setText('req-count-aguardando',   reqCounts.aguardando|| 0);
+      setText('req-count-concluida',    reqCounts.concluida || 0);
 
-      const ultimasReq = summary?.req?.recent || [];
-      const boxReq = document.getElementById('lista-requisicoes');
-
-      if (boxReq) {
-        if (!ultimasReq.length) {
-          boxReq.textContent = 'Sem registros';
+      const ultimasReqBox = document.getElementById('lista-requisicoes');
+      if (ultimasReqBox) {
+        const items = summary?.req?.recent || [];
+        if (!items.length) {
+          ultimasReqBox.textContent = 'Sem registros';
         } else {
-          boxReq.innerHTML = '';
+          ultimasReqBox.innerHTML = '';
           const ul = document.createElement('ul');
-          ul.style.margin = '0';
-          ul.style.paddingLeft = '16px';
-
-          ultimasReq.forEach(r => {
+          ul.style.margin = '0'; ul.style.paddingLeft = '16px';
+          items.forEach(r => {
             const li = document.createElement('li');
             li.textContent = `${r.id} — ${r.material || '-'} — ${r.status}`;
             ul.appendChild(li);
           });
-
-          boxReq.appendChild(ul);
+          ultimasReqBox.appendChild(ul);
         }
       }
     }
-
   } catch (err) {
     console.error('[loadDashboard] erro:', err.message);
   }
@@ -1028,31 +1066,32 @@ async function loadDashboard() {
    LOGOUT
 ========================= */
 document.addEventListener('DOMContentLoaded', () => {
-  const btn = document.getElementById('btnLogout');
-  if (!btn) return;
+  const btnLogout = document.getElementById('btnLogout');
+  if (!btnLogout) return;
 
-  if (btn.dataset.wired === '1') return;
-  btn.dataset.wired = '1';
+  if (btnLogout.dataset.wired === '1') return;
+  btnLogout.dataset.wired = '1';
 
-  btn.addEventListener('click', async (ev) => {
+  btnLogout.addEventListener('click', async (ev) => {
     ev.preventDefault();
-    btn.disabled = true;
-    const prev = btn.textContent;
-    btn.textContent = 'Saindo...';
+    btnLogout.disabled = true;
+    const prev = btnLogout.textContent;
+    btnLogout.textContent = 'Saindo...';
 
     try {
       await api('/api/auth/logout', { method: 'POST', body: JSON.stringify({}) });
       window.location.href = '/auth';
-    } catch {
-      alert('Não foi possível sair agora.');
-      btn.disabled = false;
-      btn.textContent = prev;
+    } catch (err) {
+      console.error('[logout] erro:', err);
+      alert('Não foi possível sair agora. Tente novamente.');
+      btnLogout.disabled = false;
+      btnLogout.textContent = prev;
     }
   });
 });
 
 /* =========================
-   MENU MOBILE (☰)
+   MOBILE MENU (☰) – abrir/fechar sidebar
 ========================= */
 document.addEventListener('DOMContentLoaded', () => {
   const btn = document.getElementById('btnMobileMenu');
@@ -1075,77 +1114,17 @@ document.addEventListener('DOMContentLoaded', () => {
     const isOpen = document.body.classList.contains('sidebar-open');
     isOpen ? closeMenu() : openMenu();
   });
-
   backdrop.addEventListener('click', closeMenu);
 
-  document.querySelector('.menu-items')?.addEventListener('click', () => {
+  // Fecha ao navegar no menu (apenas no mobile)
+  document.querySelector('.menu-items')?.addEventListener('click', (ev) => {
+    const item = ev.target.closest('button,[role="menuitem"]');
+    if (!item) return;
     if (window.matchMedia('(max-width: 1024px)').matches) closeMenu();
   });
 
+  // Se voltar para desktop, garante fechado
   window.addEventListener('resize', () => {
     if (!window.matchMedia('(max-width: 1024px)').matches) closeMenu();
   });
 });
-
-/* =========================================================
-   INICIALIZAÇÃO PRINCIPAL + PERFIL + EXPORTAR EXCEL
-========================================================= */
-document.addEventListener("DOMContentLoaded", async () => {
-  // ---- Popular selects ----
-  popularSelect("selectGaragem", bancoDeDados.garagens, "Escolha uma garagem...");
-  popularTipoServico();
-  popularSelectsRequisicao();
-
-  // Frota do abastecimento
-  (function popularSelectFrotaAbastecimento() {
-    const s = document.getElementById("selectFrotaAbast");
-    if (!s) return;
-    const frotas = obterFrotasCombinadas();
-    s.innerHTML = `<option value="">Selecione...</option>` +
-      frotas.map(f => `<option value="${f.prefixo}">${f.prefixo} • ${f.placa} • ${f.garagem}</option>`).join("");
-  })();
-
-  // ---- Descobrir perfil ----
-  let role = "driver";
-  try {
-    const me = await api('/api/auth/me');
-    role = me?.user?.role;
-  } catch {
-    return window.location.href = "/auth";
-  }
-
-  // ---- Driver ----
-  if (role === "driver") {
-    document.querySelectorAll(".admin-only").forEach(el => {
-      el.style.display = "none";
-      el.setAttribute("aria-hidden", "true");
-    });
-
-    alternarTelas("minhas-os");
-    try { await loadMyOsHistory(); } catch {}
-
-    return; // fim para driver
-  }
-
-  // ---- ADMIN ----
-  document.body.classList.add("admin");
-
-  // Garante exibição correta dos elementos admin-only
-  document.querySelectorAll(".admin-only").forEach(el => {
-    el.style.removeProperty("display");
-    el.removeAttribute("aria-hidden");
-  });
-
-  alternarTelas("dashboard");
-  try { await atualizarDashboard(); } catch {}
-
-  // ====== BOTÃO EXPORTAR EXCEL (APENAS ADMIN) ======
-  const btnExportExcel = document.getElementById("btnExportExcelOS");
-  if (btnExportExcel && !btnExportExcel.dataset.wired) {
-    btnExportExcel.dataset.wired = "1";
-    btnExportExcel.addEventListener("click", () => {
-      window.location.href = "/api/os/export.xlsx";
-    });
-  }
-
-}); // fim do DOMContentLoaded PRINCIPAL
