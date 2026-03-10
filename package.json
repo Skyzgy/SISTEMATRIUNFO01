@@ -6,19 +6,19 @@
   "scripts": {
     "dev": "node server/server.js",
     "start": "node server/server.js",
-    "prestart": "node node_modules/prisma/build/index.js migrate deploy --schema=server/prisma/schema.prisma || node node_modules/prisma/build/index.js db push --schema=server/prisma/schema.prisma",
+    "prestart": "node node_modules/prisma/build/index.js migrate deploy --schema=server/prisma/schema.prisma; node node_modules/prisma/build/index.js db push --schema=server/prisma/schema.prisma",
     "postinstall": "node node_modules/prisma/build/index.js generate --schema=server/prisma/schema.prisma"
   },
   "engines": {
     "node": ">=18"
   },
   "dependencies": {
-    "@prisma/client": "^5.14.0",
+    "@prisma/client": "^5.22.0",
     "bcryptjs": "^2.4.3",
     "cookie-parser": "^1.4.6",
     "cors": "^2.8.5",
     "express": "^4.18.3",
     "jsonwebtoken": "^9.0.2",
-    "prisma": "^5.14.0"
+    "prisma": "^5.22.0"
   }
 }
