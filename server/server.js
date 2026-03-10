@@ -193,6 +193,94 @@ app.post("/api/auth/logout", (_req, res) => { res.clearCookie("token"); res.json
 // =====================================================
 // OS
 // =====================================================
+
+// ===============================
+// EXPORTAÇÃO EXCEL DE OS
+// ===============================
+app.get("/api/os/export.xlsx", authRequired, roleRequired("driver","admin"), async (req, res) => {
+  try {
+    // Carrega ExcelJS on-demand (evita falha de require caso não esteja instalado)
+    const ExcelJS = require("exceljs");
+
+    const { status, frota, mine } = req.query;
+    const where = {};
+
+    if (status) where.status = String(status);
+    if (frota)  where.frota  = String(frota);
+
+    // Escopo por papel
+    if (req.user.role === "driver") {
+      where.createdBy = req.user.id;
+    } else if (String(mine).toLowerCase() === "1" || String(mine).toLowerCase() === "true") {
+      where.createdBy = req.user.id;
+    }
+
+    // Exporta sem paginação (tudo que atender ao filtro)
+    const items = await prisma.oS.findMany({
+      where,
+      orderBy: { createdAt: "desc" }
+    });
+
+    // Monta a planilha
+    const wb = new ExcelJS.Workbook();
+    const ws = wb.addWorksheet("Ordens de Serviço");
+
+    // Cabeçalho
+    ws.addRow([
+      "ID", "Seq", "Garagem", "Motorista", "Frota", "KM", "Tipo Serviço",
+      "Descrição", "Status", "Aberta por", "Abertura", "Atualização"
+    ]);
+    ws.getRow(1).eachCell((cell) => {
+      cell.font = { bold: true };
+      cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFE6E6E6" } };
+      cell.border = {
+        top: { style: "thin" }, left: { style: "thin" },
+        bottom: { style: "thin" }, right: { style: "thin" }
+      };
+    });
+
+    // Linhas
+    for (const os of items) {
+      ws.addRow([
+        os.id,
+        os.seq ?? "",
+        os.garagem || "",
+        os.motorista || "",
+        os.frota || "",
+        os.km ?? "",
+        os.tipoServico || "",
+        os.descricao || "",
+        os.status || "",
+        os.openedByName || "",
+        os.openedAt ? new Date(os.openedAt).toLocaleString("pt-BR") : "",
+        os.updatedAt ? new Date(os.updatedAt).toLocaleString("pt-BR") : ""
+      ]);
+    }
+
+    // Ajuste de largura automática simples
+    ws.columns?.forEach((col) => {
+      let max = 10;
+      col.eachCell?.({ includeEmpty: true }, (cell) => {
+        const v = String(cell.value ?? "");
+        max = Math.max(max, v.length + 2);
+      });
+      col.width = Math.min(Math.max(max, 12), 60);
+    });
+
+    // Headers de resposta
+    const fileName = `os-export-${Date.now()}.xlsx`;
+    res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+    res.setHeader("Content-Disposition", `attachment; filename=${fileName}`);
+
+    await wb.xlsx.write(res);
+    res.end();
+
+  } catch (err) {
+    console.error("Erro ao exportar Excel:", err);
+    res.status(500).json({ error: "Erro ao gerar Excel." });
+  }
+});
+
 // Criar OS (driver/admin) com ID sequencial global
 app.post("/api/os", authRequired, roleRequired("driver","admin"), async (req, res) => {
   try {
