@@ -13,33 +13,44 @@ const prisma = new PrismaClient();
 
 // .env local apenas fora de produção
 if (process.env.NODE_ENV !== "production") {
-  require("dotenv").config();
+  try { require("dotenv").config(); } catch {}
 }
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 const JWT_SECRET = process.env.JWT_SECRET || "dev-secret";
 
-// ====== PÚBLICO ======
-const PUBLIC_DIR = path.join(__dirname, "..", "public");
+// =====================================================
+// 🔎 DIAGNÓSTICO ANTES DE QUALQUER MIDDLEWARE
+// =====================================================
+app.get("/ping-early", (_req, res) => {
+  res.type("text/plain").send("pong-early");
+});
 
-// ====== MIDDLEWARES ======
+// =====================================================
+// MIDDLEWARES BÁSICOS + ESTÁTICOS
+// =====================================================
 app.use(cors({ origin: true, credentials: true }));
 app.use(cookieParser());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+// Estáticos do front
+const PUBLIC_DIR = path.join(__dirname, "..", "public");
 app.use(express.static(PUBLIC_DIR));
 
-// Logger simples
+// 🔎 LOGGER VERBOSO POR REQUEST
 app.use((req, res, next) => {
   const t0 = Date.now();
   res.on("finish", () => {
-    console.log(`${req.method} ${req.url} -> ${res.statusCode} (${Date.now()-t0}ms)`);
+    console.log(`[REQ] ${req.method} ${req.originalUrl} -> ${res.statusCode} (${Date.now()-t0}ms)`);
   });
   next();
 });
 
-// ====== HELPERS ======
+// =====================================================
+// HELPERS
+// =====================================================
 function isValidName(s){ return typeof s==="string" && s.trim().length>=2 && s.trim().length<=60; }
 function isValidSixDigitPassword(p){ return /^\d{6}$/.test(String(p)); }
 
@@ -77,12 +88,28 @@ function roleRequired(...roles) {
   };
 }
 
-// ====== HEALTHCHECK / PÁGINAS ======
-app.get("/healthz", (_req, res) => res.status(200).json({ ok: true, ts: new Date().toISOString() }));
+// =====================================================
+// 🔎 ROTAS DE SAÚDE (SEM JSON) + HEALTHZ JSON
+// =====================================================
+app.get("/ping", (_req, res) => {
+  res.type("text/plain").send("pong");
+});
+app.get("/healthz-light", (_req, res) => {
+  res.type("text/plain").send("ok");
+});
+app.get("/healthz", (_req, res) => {
+  return res.status(200).json({ ok: true, ts: new Date().toISOString() });
+});
+
+// =====================================================
+// PÁGINAS
+// =====================================================
 app.get(['/auth','/auth.html'], (_req, res) => res.sendFile(path.join(PUBLIC_DIR, 'auth.html')));
 app.get(['/', '/index', '/index.html'], authRequired, (_req, res) => res.sendFile(path.join(PUBLIC_DIR, 'index.html')));
 
-// ====== SEED ADMIN (se não houver) ======
+// =====================================================
+// SEED ADMIN (se não houver)
+// =====================================================
 async function seedAdminIfMissing() {
   const admin = await prisma.user.findFirst({ where: { role: "admin" } });
   if (admin) return;
@@ -96,7 +123,9 @@ async function seedAdminIfMissing() {
   console.log(`✅ Admin seed criado: ${firstName} ${lastName}`);
 }
 
-// ====== AUTH ======
+// =====================================================
+// AUTH
+// =====================================================
 app.post("/api/auth/register", async (req, res) => {
   try {
     const { firstName, lastName, password } = req.body;
@@ -133,8 +162,8 @@ app.post("/api/auth/login", async (req, res) => {
     const { firstName, lastName, password } = req.body;
     const user = await prisma.user.findFirst({
       where: {
-        firstName: { equals: String(firstName||""), mode: "insensitive" },
-        lastName:  { equals: String(lastName||""),  mode: "insensitive" }
+        firstName: { equals: String(firstName||"").trim(), mode: "insensitive" },
+        lastName:  { equals: String(lastName||"").trim(),  mode: "insensitive" }
       }
     });
     if (!user) return res.status(401).json({ error: "Credenciais inválidas." });
@@ -161,7 +190,9 @@ app.post("/api/auth/login", async (req, res) => {
 app.get("/api/auth/me", authRequired, (req, res) => res.json({ user: req.user }));
 app.post("/api/auth/logout", (_req, res) => { res.clearCookie("token"); res.json({ message: "Logout ok" }); });
 
-// ====== OS ======
+// =====================================================
+// OS
+// =====================================================
 // Criar OS (driver/admin) com ID sequencial global
 app.post("/api/os", authRequired, roleRequired("driver","admin"), async (req, res) => {
   try {
@@ -286,7 +317,9 @@ app.get("/api/os/recent", authRequired, roleRequired("driver","admin"), async (r
   }
 });
 
-// ====== REQUISIÇÕES (ADMIN) ======
+// =====================================================
+// REQUISIÇÕES (ADMIN)
+// =====================================================
 app.post("/api/req", authRequired, roleRequired("admin"), async (req, res) => {
   try {
     const { material, quantidade, garagem, frota, solicitante, data, codigo, descricao } = req.body;
@@ -320,7 +353,7 @@ app.get("/api/req", authRequired, roleRequired("admin"), async (req, res) => {
 
     const where = {};
     if (status) where.status = String(status);
-    if (frota)  where.frota = String(frota);
+    if (frota)  where.frota  = String(frota);
     if (material) where.material = { contains: String(material), mode: "insensitive" };
 
     const [total, items] = await Promise.all([
@@ -355,7 +388,9 @@ app.patch("/api/req/:id/status", authRequired, roleRequired("admin"), async (req
   }
 });
 
-// ====== ABASTECIMENTO (ADMIN) ======
+// =====================================================
+// ABASTECIMENTO (ADMIN)
+// =====================================================
 app.post("/api/abast", authRequired, roleRequired("admin"), async (req, res) => {
   try {
     const { dataHora, frota, kmVeiculo, kmInicioBomba, kmFimBomba, litros } = req.body;
@@ -403,7 +438,9 @@ app.get("/api/abast", authRequired, roleRequired("admin"), async (req, res) => {
   }
 });
 
-// ====== DASHBOARD SUMMARY ======
+// =====================================================
+// DASHBOARD SUMMARY
+// =====================================================
 app.get("/api/dashboard/summary", authRequired, roleRequired("driver","admin"), async (req, res) => {
   try {
     // OS
@@ -445,18 +482,36 @@ app.get("/api/dashboard/summary", authRequired, roleRequired("driver","admin"), 
   }
 });
 
-// ====== STARTUP ======
+// =====================================================
+// STARTUP
+// =====================================================
 (async () => {
   try {
+    // Validação leve de conexão com DB (não bloqueia o start se falhar)
+    try {
+      await prisma.$queryRaw`SELECT 1`;
+      console.log("✅ Conexão com Postgres ok.");
+    } catch (dbErr) {
+      console.warn("⚠️  Não foi possível confirmar o Postgres agora:", dbErr?.message || dbErr);
+    }
+
     await seedAdminIfMissing();
+
     app.listen(PORT, '0.0.0.0', () => {
-      console.log(`🚀 Server ouvindo em 0.0.0.0`);
+      console.log(`🚀 Server ouvindo em 0.0.0.0:${PORT}`);
       console.log(`   • NODE_ENV        = ${process.env.NODE_ENV || '(vazio)'}`);
       console.log(`   • process.env.PORT= ${process.env.PORT || '(vazio)'}`);
-      console.log(`   • PORT efetiva    = ${PORT}`);
     });
   } catch (err) {
     console.error("Falha ao iniciar:", err);
     process.exit(1);
   }
 })();
+
+// Logs de crash não tratados
+process.on("unhandledRejection", (r) => {
+  console.error("unhandledRejection:", r);
+});
+process.on("uncaughtException", (e) => {
+  console.error("uncaughtException:", e);
+});
