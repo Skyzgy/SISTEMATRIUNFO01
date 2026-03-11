@@ -104,8 +104,8 @@ function ISOparaBR(isoStr) {
 }
 function escapeHTML(str) {
   return String(str)
-    .replace(/&amp;/g,"&amp;amp;").replace(/&lt;/g,"&amp;lt;").replace(/&gt;/g,"&amp;gt;")
-    .replace(/"/g,"&amp;quot;").replace(/'/g,"&amp;#039;");
+    .replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;")
+    .replace(/"/g,"&quot;").replace(/'/g,"&#039;");
 }
 function normalizarStatus(s){ if(!s) return "ABERTA"; const b=String(s).trim().toUpperCase(); if (b==="FECHADA") return "CONCLUÍDA"; return STATUS.includes(b)?b:"ABERTA"; }
 function setText(id,val){ const el=document.getElementById(id); if(el) el.textContent=String(val ?? 0); }
@@ -118,21 +118,10 @@ function obterFrotasCombinadas(){ const out=[]; Object.entries(bancoDeDados.veic
 ========================= */
 let ultimoFoco = null;
 
-/* 🔧 Anti‑sobreposição de modais */
-function fecharTodasModais() {
-  ["modalOS", "modalRequisicao", "modalAbastecimento"].forEach(id => {
-    const m = document.getElementById(id);
-    if (m) m.classList.remove("active");
-  });
-  document.body.classList.remove("no-scroll");
-  try { ultimoFoco?.focus(); } catch {}
-}
-
 /* =========================
    Modais - OS
 ========================= */
 function abrirModal() {
-  fecharTodasModais(); // evita duas modais ao mesmo tempo
   const overlay = document.getElementById("modalOS");
   if (!overlay) return;
   overlay.classList.add("active");
@@ -167,7 +156,6 @@ function fecharModal() {
    Modais - Requisição
 ========================= */
 function abrirModalRequisicao() {
-  fecharTodasModais();
   const overlay = document.getElementById("modalRequisicao");
   if (!overlay) return;
   overlay.classList.add("active");
@@ -206,7 +194,6 @@ function fecharModalRequisicao() {
    Modais - Abastecimento
 ========================= */
 function abrirModalAbastecimento() {
-  fecharTodasModais();
   const overlay = document.getElementById("modalAbastecimento");
   if (!overlay) return;
   overlay.classList.add("active");
@@ -310,10 +297,60 @@ function popularSelectsRequisicao() {
   if (sS) sS.innerHTML = `<option value="">Selecione a garagem primeiro...</option>`;
 }
 
-/* =========================================================
-   PARTE 2/3 – Salvar OS/REQ/ABAST (API), Dashboard-bridge,
-   Tabelas (legado localStorage), Ações e BUSCAS (único bloco)
-========================================================= */
+/* =========================
+   Update por GARAGEM
+========================= */
+function atualizarCamposPorGaragem() {
+  const g = document.getElementById("selectGaragem").value;
+  const sMot = document.getElementById("selectMotorista");
+  const sFrota = document.getElementById("selectFrota");
+
+  if (!g) {
+    if (sMot)  sMot.innerHTML  = `<option value="">Selecione a garagem primeiro...</option>`;
+    if (sFrota) sFrota.innerHTML = `<option value="">Selecione a garagem primeiro...</option>`;
+    return;
+  }
+
+  const motoristas = bancoDeDados.motoristas[g] || [];
+  const frotas     = bancoDeDados.veiculos[g]   || [];
+
+  if (sMot) {
+    sMot.innerHTML =
+      `<option value="">Selecione...</option>` +
+      motoristas.map(m => `<option value="${m}">${m}</option>`).join("");
+  }
+  if (sFrota) {
+    sFrota.innerHTML =
+      `<option value="">Selecione...</option>` +
+      frotas.map(v => `<option value="${v.prefixo}">${v.prefixo} • ${v.placa}</option>`).join("");
+  }
+}
+
+function atualizarCamposReqPorGaragem() {
+  const g     = document.getElementById("selectGaragemReq").value;
+  const sFrot = document.getElementById("selectFrotaReq");
+  const sSol  = document.getElementById("selectSolicitanteReq");
+
+  if (!g) {
+    if (sFrot) sFrot.innerHTML = `<option value="">Selecione a garagem primeiro...</option>`;
+    if (sSol)  sSol.innerHTML  = `<option value="">Selecione a garagem primeiro...</option>`;
+    return;
+  }
+
+  const frotas = bancoDeDados.veiculos[g] || [];
+  if (sFrot) {
+    sFrot.innerHTML =
+      `<option value="">Selecione...</option>` +
+      frotas.map(v => `<option value="${v.prefixo}">${v.prefixo} • ${v.placa}</option>`).join("");
+  }
+
+  const equipe = solicitantesPorGaragem[g] || [];
+  if (sSol) {
+    sSol.innerHTML =
+      `<option value="">Selecione...</option>` +
+      equipe.map(n => `<option value="${n}">${n}</option>`).join("");
+  }
+}
 
 /* =========================
    Salvar OS/REQ/ABAST – via API
@@ -460,7 +497,7 @@ async function salvarAbastecimento() {
 }
 
 /* =========================
-   Dashboard (ponte p/ loadDashboard real)
+   Dashboard (via API)
 ========================= */
 async function atualizarDashboard() {
   try {
@@ -705,10 +742,9 @@ function removerAbastecimento(id, indexFallback = -1) {
 }
 
 /* =========================
-   BUSCAS (legado) — ÚNICO bloco
+   BUSCA nas telas “Ver todos” (LEGADO)
 ========================= */
 const BUSCA_STATE = { os: "", req: "", abast: "" };
-
 function norm(s) {
   return String(s ?? "")
     .toLowerCase()
@@ -877,21 +913,19 @@ function renderizarTabelaAbastecimentoFiltrada() {
   `;
 }
 
-/* =========================
-   Wiring dos inputs de BUSCA (pequeno DOMContentLoaded)
-========================= */
+/* ---- Liga inputs de busca ---- */
 document.addEventListener("DOMContentLoaded", () => {
   const iOS    = document.getElementById("busca-os");
   const iREQ   = document.getElementById("busca-req");
   const iABAST = document.getElementById("busca-abast");
 
-  if (iOS)   iOS.addEventListener("input",  () => { BUSCA_STATE.os    = iOS.value;    renderizarTabelaOSFiltrada(); });
-  if (iREQ)  iREQ.addEventListener("input", () => { BUSCA_STATE.req   = iREQ.value;   renderizarTabelaREQFiltrada(); });
+  if (iOS)  iOS.addEventListener("input", () => { BUSCA_STATE.os = iOS.value; renderizarTabelaOSFiltrada(); });
+  if (iREQ) iREQ.addEventListener("input", () => { BUSCA_STATE.req = iREQ.value; renderizarTabelaREQFiltrada(); });
   if (iABAST) iABAST.addEventListener("input", () => { BUSCA_STATE.abast = iABAST.value; renderizarTabelaAbastecimentoFiltrada(); });
 });
 
 /* =========================
-   Event wiring + Inicialização (DOMContentLoaded principal)
+   Event wiring + Inicialização
 ========================= */
 document.addEventListener("DOMContentLoaded", async () => {
   // Nav por data-nav-target
@@ -909,7 +943,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     });
   });
 
-  // Fechar modais (botões com data-close-modal)
+  // Fechar modais
   document.querySelectorAll("[data-close-modal]").forEach(btn => {
     btn.addEventListener("click", () => {
       const modal = btn.closest(".modal-overlay");
@@ -920,11 +954,11 @@ document.addEventListener("DOMContentLoaded", async () => {
     });
   });
 
-  // Clique fora fecha modais (backdrop)
+  // Clique fora fecha modais
   document.addEventListener("click", (e) => {
-    const mOS = document.getElementById("modalOS");
-    const mRQ = document.getElementById("modalRequisicao");
-    const mAB = document.getElementById("modalAbastecimento");
+    const mOS  = document.getElementById("modalOS");
+    const mRQ  = document.getElementById("modalRequisicao");
+    const mAB  = document.getElementById("modalAbastecimento");
     if (e.target === mOS) fecharModal();
     if (e.target === mRQ) fecharModalRequisicao();
     if (e.target === mAB) fecharModalAbastecimento();
@@ -938,14 +972,14 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (document.getElementById("modalAbastecimento")?.classList.contains("active")) fecharModalAbastecimento();
   });
 
-  // Trap de foco (Tab) dentro das modais
+  // Trap de foco
   ["modalOS", "modalRequisicao", "modalAbastecimento"].forEach(id => {
     const modal = document.getElementById(id);
     if (!modal) return;
     modal.addEventListener("keydown", (e) => { if (e.key === "Tab") trapFocus(modal, e); });
   });
 
-  // Submits via Enter nas modais (evita Enter dentro de textarea/select)
+  // Submits via Enter nas modais
   document.getElementById("modalOS")?.addEventListener("keydown", (e) => {
     if (e.key === "Enter") {
       const tag = document.activeElement?.tagName?.toLowerCase();
@@ -1009,7 +1043,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   const inputDataReq = document.getElementById("inputDataReq");
   if (inputDataReq && !inputDataReq.value) inputDataReq.value = toISODateString(new Date());
 
-  // Popular Frota no Abastecimento (todas as garagens combinadas)
+  // Popular Frota no Abastecimento
   (function popularSelectFrotaAbastecimento() {
     const s = document.getElementById("selectFrotaAbast");
     if (!s) return;
@@ -1044,40 +1078,13 @@ document.addEventListener("DOMContentLoaded", async () => {
   } catch (e) {
     // Sem sessão: fluxo normal leva para /auth
   }
-
-  // ===== Complemento pós-perfil: reforçar admin-only + Exportar Excel (somente Admin) =====
-  try {
-    const me2 = await api('/api/auth/me'); // reaproveita sessão válida
-    const role2 = me2?.user?.role;
-
-    if (role2 === 'admin') {
-      // Garante visibilidade de .admin-only (caso algum inline style oculte)
-      document.body.classList.add('admin');
-      document.querySelectorAll('.admin-only').forEach(el => {
-        el.style.removeProperty('display');
-        el.removeAttribute('aria-hidden');
-      });
-
-      // Liga o botão "Exportar Excel" (somente Admin)
-      const btnExportExcelOS = document.getElementById('btnExportExcelOS');
-      if (btnExportExcelOS && !btnExportExcelOS.dataset.wired) {
-        btnExportExcelOS.dataset.wired = '1';
-        btnExportExcelOS.addEventListener('click', () => {
-          // Futuro: dá para incluir filtros na querystring se você quiser
-          window.location.href = '/api/os/export.xlsx';
-        });
-      }
-    }
-  } catch (_) {
-    // silencioso
-  }
 });
 
 /* =========================
    API CONFIG + HELPERS
 ========================= */
 // MESMO host (Railway serve front + API)
-const API_URL = ''; // se o front for separado, aponte para a URL do backend
+const API_URL = ''; // se front for separado, aponte para a URL do backend
 
 async function api(path, options = {}) {
   const res = await fetch(`${API_URL}${path}`, {
@@ -1091,9 +1098,6 @@ async function api(path, options = {}) {
   return data;
 }
 
-/* =========================
-   Dashboard real (via /summary)
-========================= */
 async function loadDashboard() {
   try {
     const summary = await api('/api/dashboard/summary');
