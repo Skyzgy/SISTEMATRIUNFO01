@@ -1,4 +1,3 @@
-// server/server.js
 const express = require("express");
 const cookieParser = require("cookie-parser");
 const cors = require("cors");
@@ -195,6 +194,36 @@ app.post("/api/auth/logout", (_req, res) => { res.clearCookie("token"); res.json
 // =====================================================
 
 // ===============================
+// (NOVA) OS ABERTAS para o select de Requisição
+// ===============================
+app.get("/api/os/open", authRequired, roleRequired("driver","admin"), async (req, res) => {
+  try {
+    const { garagem, frota } = req.query;
+
+    const where = { status: "aberta" };
+    if (garagem) where.garagem = String(garagem);
+    if (frota)   where.frota   = String(frota);
+
+    const items = await prisma.oS.findMany({
+      where,
+      select: {
+        id: true,
+        garagem: true,
+        frota: true,
+        tipoServico: true,
+        openedAt: true
+      },
+      orderBy: { openedAt: "desc" }
+    });
+
+    res.json({ items });
+  } catch (err) {
+    console.error("[GET /api/os/open] error:", err);
+    res.status(500).json({ error: "Erro ao listar OS abertas." });
+  }
+});
+
+// ===============================
 // EXPORTAÇÃO EXCEL DE OS
 // ===============================
 app.get("/api/os/export.xlsx", authRequired, roleRequired("driver","admin"), async (req, res) => {
@@ -352,6 +381,53 @@ app.get("/api/os", authRequired, roleRequired("driver","admin"), async (req, res
   }
 });
 
+// (NOVA) Detalhes da OS + itens (Requisições) vinculados — Admin
+app.get("/api/os/:id/details", authRequired, roleRequired("admin"), async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const os = await prisma.oS.findUnique({
+      where: { id: String(id) },
+      select: {
+        id: true,
+        garagem: true,
+        frota: true,
+        motorista: true,
+        tipoServico: true,
+        descricao: true,
+        status: true,
+        openedAt: true,
+        createdAt: true,
+        updatedAt: true
+      }
+    });
+    if (!os) return res.status(404).json({ error: "OS não encontrada." });
+
+    const itens = await prisma.req.findMany({
+      where: { osId: String(id) },
+      select: {
+        id: true,
+        material: true,
+        quantidade: true,
+        codigo: true,
+        descricao: true,
+        solicitante: true,
+        garagem: true,
+        frota: true,
+        data: true,
+        status: true,
+        createdAt: true
+      },
+      orderBy: { createdAt: "desc" }
+    });
+
+    res.json({ os, itens });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: "Erro ao buscar detalhes da OS." });
+  }
+});
+
 // Alterar status (admin)
 app.patch("/api/os/:id/status", authRequired, roleRequired("admin"), async (req, res) => {
   try {
@@ -408,9 +484,45 @@ app.get("/api/os/recent", authRequired, roleRequired("driver","admin"), async (r
 // =====================================================
 // REQUISIÇÕES (ADMIN)
 // =====================================================
+
+// (AJUSTADO) Criar Requisição — agora exige osId e valida OS ABERTA
 app.post("/api/req", authRequired, roleRequired("admin"), async (req, res) => {
   try {
-    const { material, quantidade, garagem, frota, solicitante, data, codigo, descricao } = req.body;
+    const { material, quantidade, garagem, frota, solicitante, data, codigo, descricao, osId } = req.body;
+
+    // validações simples de campos (mantendo seu padrão)
+    const erros = [];
+    if (!material) erros.push("Informe o material.");
+    if (!quantidade || Number(quantidade) <= 0) erros.push("Informe a quantidade (> 0).");
+    if (!garagem) erros.push("Selecione a garagem.");
+    if (!frota)   erros.push("Selecione a frota.");
+    if (!solicitante) erros.push("Selecione o solicitante.");
+    if (!codigo)  erros.push("Informe o código.");
+    if (!descricao) erros.push("Informe a descrição.");
+
+    // ✅ NOVO: exigir OS de destino
+    if (!osId) erros.push("Selecione a OS (aberta) para vincular esta peça.");
+
+    if (erros.length) return res.status(400).json({ error: erros.join(" ") });
+
+    // validar OS vinculada (precisa existir e estar ABERTA)
+    const osRef = await prisma.oS.findUnique({
+      where: { id: String(osId) },
+      select: { id: true, status: true }
+    });
+    if (!osRef) return res.status(400).json({ error: "OS informada não existe." });
+    if (osRef.status !== "aberta") {
+      return res.status(400).json({ error: "Somente OS com status ABERTA podem receber requisições." });
+    }
+
+    // coerção de data (opcional)
+    let dataParsed = null;
+    if (data) {
+      const d = new Date(data);
+      if (!isNaN(d.getTime())) dataParsed = d;
+    }
+
+    // cria a requisição já vinculada
     const item = await prisma.req.create({
       data: {
         material: String(material||"").trim(),
@@ -418,13 +530,17 @@ app.post("/api/req", authRequired, roleRequired("admin"), async (req, res) => {
         garagem: String(garagem||"").trim(),
         frota: String(frota||"").trim(),
         solicitante: String(solicitante||"").trim(),
-        data: data ? new Date(data) : null,
+        data: dataParsed,
         codigo: String(codigo||"").trim(),
         descricao: String(descricao||"").trim(),
         status: "aberta",
-        createdBy: req.user?.id || null
+        createdBy: req.user?.id || null,
+
+        // vínculo
+        osId: String(osId)
       }
     });
+
     res.status(201).json({ message: "Requisição criada", req: item });
   } catch (e) {
     console.error(e);

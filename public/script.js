@@ -152,6 +152,9 @@ function fecharModal() {
   ultimoFoco?.focus();
 }
 
+
+
+
 /* =========================
    Modais - Requisição
 ========================= */
@@ -178,6 +181,9 @@ function abrirModalRequisicao() {
   if (cod)      cod.value = "";
   if (desc)     desc.value = "";
   if (data && !data.value) data.value = toISODateString(new Date());
+
+  // 🔗 Carregar OS abertas ao abrir o modal
+  try { popularSelectOSReq(); } catch {}
 
   ultimoFoco = document.activeElement;
   setTimeout(() => material?.focus(), 0);
@@ -352,6 +358,63 @@ function atualizarCamposReqPorGaragem() {
   }
 }
 
+/* =========================================================
+   OS ABERTAS para Requisição - Helpers
+========================================================= */
+
+// Usa o helper api() se existir; senão, usa fetch
+async function __getJSON(path) {
+  if (typeof api === 'function') return api(path);
+  const res = await fetch(path, { credentials: 'include', headers: { 'Content-Type': 'application/json' } });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data?.error || `HTTP ${res.status}`);
+  return data;
+}
+
+// Carrega OS abertas
+async function carregarOSAbertas({ garagem, frota }) {
+  const params = new URLSearchParams();
+  if (garagem) params.set('garagem', garagem);
+  if (frota)   params.set('frota',   frota);
+  const qs = params.toString();
+  const url = `/api/os/open${qs ? `?${qs}` : ''}`;
+  const data = await __getJSON(url);
+  return Array.isArray(data.items) ? data.items : [];
+}
+
+// Popula o select de OS da Requisição
+async function popularSelectOSReq() {
+  const selGar = document.getElementById('selectGaragemReq');
+  const selFro = document.getElementById('selectFrotaReq');
+  const selOS  = document.getElementById('selectOSReq');
+  if (!selOS) return;
+
+  selOS.innerHTML = `<option value="">Carregando OS abertas…</option>`;
+
+  try {
+    const garagem = selGar?.value || '';
+    const frota   = selFro?.value || '';
+    const items   = await carregarOSAbertas({ garagem, frota });
+
+    if (!items.length) {
+      selOS.innerHTML = `<option value="">Nenhuma OS aberta</option>`;
+      return;
+    }
+
+    const options = items.map(os => {
+      const quando = os.openedAt ? new Date(os.openedAt).toLocaleString('pt-BR') : '';
+      const label  = `${os.id} • ${os.frota || '-'} • ${os.tipoServico || ''} • ${quando}`;
+      return `<option value="${os.id}">${label}</option>`;
+    }).join('');
+
+    selOS.innerHTML = `<option value="">Selecione a OS…</option>` + options;
+  } catch (err) {
+    console.error('[popularSelectOSReq] erro:', err);
+    selOS.innerHTML = `<option value="">Erro ao carregar OS</option>`;
+  }
+}
+``
+
 /* =========================
    Salvar OS/REQ/ABAST – via API
 ========================= */
@@ -407,6 +470,8 @@ async function salvarRequisicao() {
   const dataISO      = document.getElementById("inputDataReq").value;
   const codigo       = document.getElementById("inputCodigoReq").value.trim();
   const descricao    = document.getElementById("textoDescricaoReq").value.trim();
+  const osSel        = document.getElementById("selectOSReq");
+  const osId         = osSel ? (osSel.value || "") : "";
 
   const erros = [];
   if (!material) erros.push("Informe o material.");
@@ -418,31 +483,42 @@ async function salvarRequisicao() {
   if (!codigo)  erros.push("Informe o código.");
   if (!descricao) erros.push("Informe a descrição.");
 
-  if (erros.length) { alert("Verifique os campos:\n- " + erros.join("\n- ")); return; }
+  // ⚠️ Se houver OS aberta disponível, é obrigatório escolher
+  const temOpcoesOS = osSel && osSel.options.length > 1;
+  if (temOpcoesOS && !osId) erros.push("Selecione a OS aberta para vincular a Requisição.");
+
+  if (erros.length) {
+    alert("Verifique os campos:\n- " + erros.join("\n- "));
+    return;
+  }
 
   const btn  = document.querySelector('[data-submit-req]');
   const prev = btn?.textContent;
   if (btn) { btn.disabled = true; btn.textContent = 'Enviando...'; }
 
   try {
+    const payload = {
+      material,
+      quantidade: Number(quantidade),
+      garagem,
+      frota,
+      solicitante,
+      data: dataISO,
+      codigo,
+      descricao,
+      osId: osId || null
+    };
+
     await api('/api/req', {
       method: 'POST',
-      body: JSON.stringify({
-        material,
-        quantidade: Number(quantidade),
-        garagem,
-        frota,
-        solicitante,
-        data: dataISO,
-        codigo,
-        descricao
-      })
+      body: JSON.stringify(payload)
     });
 
     fecharModalRequisicao();
     if (typeof loadDashboard === 'function') await loadDashboard();
     alert('Requisição criada com sucesso!');
   } catch (err) {
+    console.error('[salvarRequisicao] erro:', err);
     alert('Erro ao criar Requisição: ' + err.message);
   } finally {
     if (btn) { btn.disabled = false; btn.textContent = prev; }
@@ -1004,7 +1080,15 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   // Dependentes de garagem
   document.getElementById("selectGaragem")?.addEventListener("change", atualizarCamposPorGaragem);
-  document.getElementById("selectGaragemReq")?.addEventListener("change", atualizarCamposReqPorGaragem);
+  
+  document.getElementById("selectGaragemReq")?.addEventListener("change", async () => {
+  atualizarCamposReqPorGaragem();
+  try { await popularSelectOSReq(); } catch {}
+});
+
+document.getElementById("selectFrotaReq")?.addEventListener("change", async () => {
+  try { await popularSelectOSReq(); } catch {}
+});
 
   // Botões submit
   document.querySelector("[data-submit-os]")?.addEventListener("click", salvarOS);

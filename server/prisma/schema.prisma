@@ -48,7 +48,7 @@ model OSSequence {
 // Ordem de Serviço
 model OS {
   id            String    @id           // "2026-000001"
-  seq           Int                        // número puro
+  seq           Int                       // número puro
   garagem       String
   motorista     String?
   frota         String
@@ -65,6 +65,9 @@ model OS {
   createdAt     DateTime   @default(now())
   updatedAt     DateTime   @updatedAt
 
+  // 🔗 NOVO: todas requisições vinculadas à OS
+  requisicoes   Req[]
+
   @@index([status])
   @@index([createdBy])
   @@index([createdAt])
@@ -72,25 +75,30 @@ model OS {
 
 // Requisição (admin)
 model Req {
-  id           String   @id @default(cuid())
-  material     String
-  quantidade   Float
-  garagem      String
-  frota        String
-  solicitante  String
-  data         DateTime?
-  codigo       String
-  descricao    String
-  status       OSStatus @default(aberta)
+  id            String     @id @default(cuid())
+  material      String
+  quantidade    Float
+  garagem       String
+  frota         String
+  solicitante   String
+  data          DateTime?
+  codigo        String
+  descricao     String
+  status        OSStatus   @default(aberta)
 
-  createdBy    String?
-  createdByUser User?   @relation("UserReq", fields: [createdBy], references: [id])
+  createdBy     String?
+  createdByUser User?      @relation("UserReq", fields: [createdBy], references: [id])
 
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  // 🔗 NOVO: vínculo com OS (opcional para manter registros antigos)
+  osId          String?
+  os            OS?        @relation(fields: [osId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
 
   @@index([status])
   @@index([createdAt])
+  @@index([osId])
 }
 
 // Abastecimento (admin)

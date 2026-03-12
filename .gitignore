@@ -1,0 +1,63 @@
+# ===========================================
+# NODE + BACKEND + FRONTEND
+# ===========================================
+
+# Dependências
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# =================================================================
+# DOTENV — SUPER IMPORTANTE
+# Nunca subir URLs, senhas e chaves privadas
+# =================================================================
+.env
+server/.env
+*.env
+*.env.*
+
+
+# ===========================================
+# PRISMA
+# ===========================================
+# Migrações são opcionais de subir. Recomendo SIM subir.
+# Se quiser subir, comente a linha abaixo.
+# prisma/migrations/
+
+
+# ===========================================
+# SISTEMAS
+# ===========================================
+.DS_Store
+Thumbs.db
+
+# VSCode
+.vscode/
+.history/
+*.code-workspace
+
+
+# ===========================================
+# BUILDS (se algum dia você gerar)
+# ===========================================
+dist/
+build/
+out/
+
+
+# ===========================================
+# LOGS
+# ===========================================
+logs/
+*.log
+npm-debug.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+
+# ===========================================
+# CACHE
+# ===========================================
+.cache/
+.eslintcache
