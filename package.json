@@ -3,14 +3,21 @@
   "version": "1.0.0",
   "description": "Triunfo System - Gestao de Frota",
   "main": "server/server.js",
-  "scripts": {
-    "dev": "node server/server.js",
-    "start": "node server/server.js",
-    "prestart": "node node_modules/prisma/build/index.js migrate deploy --schema=server/prisma/schema.prisma; node node_modules/prisma/build/index.js db push --schema=server/prisma/schema.prisma",
-    "postinstall": "node node_modules/prisma/build/index.js generate --schema=server/prisma/schema.prisma"
-  },
   "engines": {
     "node": ">=18"
+  },
+  "scripts": {
+    "start": "node server/server.js",
+
+    "postinstall": "npx prisma generate --schema server/prisma/schema.prisma",
+
+    "migrate:deploy": "npx prisma migrate deploy --schema server/prisma/schema.prisma",
+
+    "dev": "node server/server.js",
+
+    "prisma:status": "npx prisma migrate status --schema server/prisma/schema.prisma --env-file server/.env",
+    "prisma:studio": "npx prisma studio --schema server/prisma/schema.prisma --env-file server/.env",
+    "prisma:generate": "npx prisma generate --schema server/prisma/schema.prisma"
   },
   "dependencies": {
     "@prisma/client": "^5.22.0",
