@@ -121,25 +121,36 @@ let ultimoFoco = null;
 /* =========================
    Modais - OS
 ========================= */
-function abrirModal() {
+async function abrirModal() {
   const overlay = document.getElementById("modalOS");
   if (!overlay) return;
   overlay.classList.add("active");
   document.body.classList.add("no-scroll");
 
   const sGar = document.getElementById("selectGaragem");
-  const sMot = document.getElementById("selectMotorista");
+  const iMot = document.getElementById("inputMotorista");
   const sFro = document.getElementById("selectFrota");
   const km   = document.getElementById("inputKM");
   const tp   = document.getElementById("selectTipoServico");
   const desc = document.getElementById("textoDescricao");
 
   if (sGar) sGar.value = "";
-  if (sMot) sMot.innerHTML = `<option value="">Selecione a garagem primeiro...</option>`;
   if (sFro) sFro.innerHTML = `<option value="">Selecione a garagem primeiro...</option>`;
   if (km)   km.value = "";
   if (tp)   tp.value = "";
   if (desc) desc.value = "";
+
+  if (iMot) {
+    try {
+      const user = await api('/api/auth/me');
+      const nome = `${user.firstName || ''} ${user.lastName || ''}`.trim();
+      if (!nome) console.warn('abrirModal: usuário logado sem firstName/lastName', user);
+      iMot.value = nome;
+    } catch (err) {
+      console.error('abrirModal: falha ao buscar usuário logado', err);
+      iMot.value = '';
+    }
+  }
 
   ultimoFoco = document.activeElement;
   setTimeout(() => sGar?.focus(), 0);
@@ -308,23 +319,15 @@ function popularSelectsRequisicao() {
 ========================= */
 function atualizarCamposPorGaragem() {
   const g = document.getElementById("selectGaragem").value;
-  const sMot = document.getElementById("selectMotorista");
   const sFrota = document.getElementById("selectFrota");
 
   if (!g) {
-    if (sMot)  sMot.innerHTML  = `<option value="">Selecione a garagem primeiro...</option>`;
     if (sFrota) sFrota.innerHTML = `<option value="">Selecione a garagem primeiro...</option>`;
     return;
   }
 
-  const motoristas = bancoDeDados.motoristas[g] || [];
   const frotas     = bancoDeDados.veiculos[g]   || [];
 
-  if (sMot) {
-    sMot.innerHTML =
-      `<option value="">Selecione...</option>` +
-      motoristas.map(m => `<option value="${m}">${m}</option>`).join("");
-  }
   if (sFrota) {
     sFrota.innerHTML =
       `<option value="">Selecione...</option>` +
@@ -420,7 +423,7 @@ async function popularSelectOSReq() {
 ========================= */
 async function salvarOS() {
   const garagem   = document.getElementById("selectGaragem").value;
-  const motorista = document.getElementById("selectMotorista").value;
+  const motorista = document.getElementById("inputMotorista").value;
   const frota     = document.getElementById("selectFrota").value;
   const km        = document.getElementById("inputKM").value.trim();
   const servico   = document.getElementById("selectTipoServico").value;
