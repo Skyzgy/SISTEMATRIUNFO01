@@ -1306,4 +1306,3 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!window.matchMedia('(max-width: 1024px)').matches) closeMenu();
   });
 });
-``
