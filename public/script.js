@@ -121,29 +121,41 @@ let ultimoFoco = null;
 /* =========================
    Modais - OS
 ========================= */
-function abrirModal() {
+async function abrirModal() {
   const overlay = document.getElementById("modalOS");
   if (!overlay) return;
   overlay.classList.add("active");
   document.body.classList.add("no-scroll");
 
   const sGar = document.getElementById("selectGaragem");
-  const sMot = document.getElementById("selectMotorista");
+  const iMot = document.getElementById("inputMotorista");
   const sFro = document.getElementById("selectFrota");
   const km   = document.getElementById("inputKM");
   const tp   = document.getElementById("selectTipoServico");
   const desc = document.getElementById("textoDescricao");
 
   if (sGar) sGar.value = "";
-  if (sMot) sMot.innerHTML = `<option value="">Selecione a garagem primeiro...</option>`;
+  if (iMot) iMot.value = "";
   if (sFro) sFro.innerHTML = `<option value="">Selecione a garagem primeiro...</option>`;
   if (km)   km.value = "";
   if (tp)   tp.value = "";
   if (desc) desc.value = "";
 
+  // Buscar usuário logado e preencher motorista
+  try {
+    const response = await fetch('/api/auth/me');
+    const data = await response.json();
+    if (data.user && iMot) {
+      iMot.value = `${data.user.firstName || ''} ${data.user.lastName || ''}`.trim();
+    }
+  } catch (error) {
+    console.warn('Erro ao buscar usuário logado:', error);
+  }
+
   ultimoFoco = document.activeElement;
   setTimeout(() => sGar?.focus(), 0);
 }
+
 function fecharModal() {
   const overlay = document.getElementById("modalOS");
   if (!overlay) return;
@@ -151,7 +163,6 @@ function fecharModal() {
   document.body.classList.remove("no-scroll");
   ultimoFoco?.focus();
 }
-
 
 
 
@@ -420,7 +431,7 @@ async function popularSelectOSReq() {
 ========================= */
 async function salvarOS() {
   const garagem   = document.getElementById("selectGaragem").value;
-  const motorista = document.getElementById("selectMotorista").value;
+  const motorista = document.getElementById("inputMotorista").value;
   const frota     = document.getElementById("selectFrota").value;
   const km        = document.getElementById("inputKM").value.trim();
   const servico   = document.getElementById("selectTipoServico").value;
