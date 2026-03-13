@@ -16,7 +16,7 @@ if (process.env.NODE_ENV !== "production") {
 }
 
 const app = express();
-const PORT = process.env.PORT || 8080;
+const PORT = process.env.PORT || process.env.RAILWAY_PORT || 3000;
 const JWT_SECRET = process.env.JWT_SECRET || "dev-secret";
 
 // =====================================================
