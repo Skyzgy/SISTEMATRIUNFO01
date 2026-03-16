@@ -45,6 +45,12 @@ model OSSequence {
   last Int @default(0)
 }
 
+// Sequência global das REQ (uma única linha com id=1 e o "last")
+model ReqSequence {
+  id   Int @id @default(1)
+  last Int @default(0)
+}
+
 // Ordem de Serviço
 model OS {
   id            String    @id           // "2026-000001"
@@ -75,7 +81,8 @@ model OS {
 
 // Requisição (admin)
 model Req {
-  id            String     @id @default(cuid())
+  id            String     @id           // "2026-000001" (sequencial)
+  seq           Int                       // número puro
   material      String
   quantidade    Float
   garagem       String
@@ -89,9 +96,9 @@ model Req {
   createdBy     String?
   createdByUser User?      @relation("UserReq", fields: [createdBy], references: [id])
 
-  // 🔗 NOVO: vínculo com OS (opcional para manter registros antigos)
-  osId          String?
-  os            OS?        @relation(fields: [osId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+  // 🔗 NOVO: vínculo com OS (obrigatório agora)
+  osId          String
+  os            OS         @relation(fields: [osId], references: [id], onDelete: Cascade, onUpdate: Cascade)
 
   createdAt     DateTime   @default(now())
   updatedAt     DateTime   @updatedAt
