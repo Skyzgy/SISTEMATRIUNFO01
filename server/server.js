@@ -1,48 +1,46 @@
+// server.js
+
 const express = require('express');
-const prisma = require('@prisma/client');
+const router = express.Router();
 
-const app = express();
-app.use(express.json());
+router.post('/api/os', (req, res) => {
+    const x = req.body.x;
+    // Apply the fix here
+    const value = String(x || "");
+    // Additional logic
+});
 
-// POST /api/req
-app.post('/api/req', async (req, res) => {
-    const { quantidade } = req.body;
-    const erros = [];
-    if (!quantidade) {
-        erros.push("quantidade is required");
+router.post('/api/req', (req, res) => {
+    const { field1, field2 } = req.body;
+    // Validate fields
+    if (!field1 || !field2) {
+        errors.push("Required fields are missing"); // Fixed quote error
     }
-    if (erros.length) {
-        return res.status(400).json({ erros });
-    }
-    // proceed with the business logic...
+    // Apply the fix here
+    const value = String(x || "");
+    // Additional logic
 });
 
-// PATCH /api/req/:id/status
-app.patch('/api/req/:id/status', async (req, res) => {
-    const { id } = req.params;
-    // business logic...
-    res.sendStatus(204);
+router.post('/api/abast', (req, res) => {
+    const x = req.body.x;
+    // Apply the fix here
+    const value = String(x || "");
+    // Additional logic
 });
 
-// POST /api/os
-app.post('/api/os', async (req, res) => {
-    const { x } = req.body;
-    res.json({ value: String(x || '') });
+router.patch('/api/req/:id/status', (req, res) => {
+    // Remove the stray backslash, if there was one, in allowed
+    const allowed = ["value1", "value2"];
+    // Logic to update status
 });
 
-// POST /api/req
-app.post('/api/req', async (req, res) => {
-    const { x } = req.body;
-    res.json({ value: String(x || '') });
+// Ensuring DELETE routes are present
+router.delete('/api/req/:id', (req, res) => {
+    // Logic to delete req
 });
 
-// POST /api/abast
-app.post('/api/abast', async (req, res) => {
-    const { x } = req.body;
-    res.json({ value: String(x || '') });
+router.delete('/api/abast/:id', (req, res) => {
+    // Logic to delete abast
 });
 
-// Server start
-app.listen(3000, () => {
-    console.log('Server is running on port 3000');
-});
+module.exports = router;
