@@ -338,12 +338,12 @@ app.post("/api/os", authRequired, roleRequired("driver","admin"), async (req, re
         data: {
           id: osId,
           seq,
-          garagem: String(garagem||"").trim(),
+          garagem: String(garagem||"{}").trim(),
           motorista: motorista ? String(motorista).trim() : null,
-          frota: String(frota||"").trim(),
+          frota: String(frota||"{}").trim(),
           km: Number(km||0),
-          tipoServico: String(tipoServico||"").trim(),
-          descricao: String(descricao||"").trim(),
+          tipoServico: String(tipoServico||"{}").trim(),
+          descricao: String(descricao||"{}").trim(),
           status: "aberta",
           createdBy: req.user?.id || null,
           openedByName,
@@ -372,7 +372,7 @@ app.get("/api/os", authRequired, roleRequired("driver","admin"), async (req, res
 
     const where = {};
     if (status) where.status = String(status);
-    if (frota)  where.frota = String(frota);
+    if (frota)  where.frota  = String(frota);
 
     if (req.user.role === "driver") {
       where.createdBy = req.user.id;
@@ -508,7 +508,7 @@ app.post("/api/req", authRequired, roleRequired("admin"), async (req, res) => {
     // validações simples de campos (mantendo seu padrão)
     const erros = [];
     if (!material) erros.push("Informe o material.");
-    if (!quantidade || Number(quantidade) <= 0) erros.push("Informe a quantidade (> 0).");
+    if (!quantidade || Number(quantidade) <= 0) erros.push("Informe a quantidade (> 0).);
     if (!garagem) erros.push("Selecione a garagem.");
     if (!frota)   erros.push("Selecione a frota.");
     if (!solicitante) erros.push("Selecione o solicitante.");
@@ -546,14 +546,14 @@ app.post("/api/req", authRequired, roleRequired("admin"), async (req, res) => {
         data: {
           id: reqId,
           seq,
-          material: String(material||"").trim(),
+          material: String(material||"{}").trim(),
           quantidade: Number(quantidade||0),
-          garagem: String(garagem||"").trim(),
-          frota: String(frota||"").trim(),
-          solicitante: String(solicitante||"").trim(),
+          garagem: String(garagem||"{}").trim(),
+          frota: String(frota||"{}").trim(),
+          solicitante: String(solicitante||"{}").trim(),
           data: dataParsed,
-          codigo: String(codigo||"").trim(),
-          descricao: String(descricao||"").trim(),
+          codigo: String(codigo||"{}").trim(),
+          descricao: String(descricao||"{}").trim(),
           status: "aberta",
           createdBy: req.user?.id || null,
 
@@ -600,7 +600,7 @@ app.get("/api/req", authRequired, roleRequired("admin"), async (req, res) => {
 app.patch("/api/req/:id/status", authRequired, roleRequired("admin"), async (req, res) => {
   try {
     const { id } = req.params; const { status } = req.body;
-    const allowed = ["aberta","andamento","aguardando","concluida"];
+    const allowed = ["aberta","andamento","aguardando","concluida"];\
     if (!allowed.includes(status)) return res.status(400).json({ error: "Status inválido." });
 
     const found = await prisma.req.findUnique({ where: { id } });
@@ -617,6 +617,21 @@ app.patch("/api/req/:id/status", authRequired, roleRequired("admin"), async (req
   }
 });
 
+// ✅ NOVO: remover Requisição (admin)
+app.delete("/api/req/:id", authRequired, roleRequired("admin"), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const found = await prisma.req.findUnique({ where: { id: String(id) } });
+    if (!found) return res.status(404).json({ error: "Requisição não encontrada." });
+
+    await prisma.req.delete({ where: { id: String(id) } });
+    res.json({ message: "Requisição removida" });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: "Erro ao remover requisição." });
+  }
+});
+
 // =====================================================
 // ABASTECIMENTO (ADMIN)
 // =====================================================
@@ -626,7 +641,7 @@ app.post("/api/abast", authRequired, roleRequired("admin"), async (req, res) => 
     const item = await prisma.abastecimento.create({
       data: {
         dataHora: dataHora ? new Date(dataHora) : new Date(),
-        frota: String(frota||"").trim(),
+        frota: String(frota||"{}").trim(),
         kmVeiculo: Number(kmVeiculo||0),
         kmInicioBomba: Number(kmInicioBomba||0),
         kmFimBomba: Number(kmFimBomba||0),
@@ -664,6 +679,21 @@ app.get("/api/abast", authRequired, roleRequired("admin"), async (req, res) => {
   } catch (e) {
     console.error(e);
     res.status(500).json({ error: "Erro ao listar abastecimentos." });
+  }
+});
+
+// ✅ NOVO: remover Abastecimento (admin)
+app.delete("/api/abast/:id", authRequired, roleRequired("admin"), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const found = await prisma.abastecimento.findUnique({ where: { id: String(id) } });
+    if (!found) return res.status(404).json({ error: "Abastecimento não encontrado." });
+
+    await prisma.abastecimento.delete({ where: { id: String(id) } });
+    res.json({ message: "Abastecimento removido" });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: "Erro ao remover abastecimento." });
   }
 });
 
