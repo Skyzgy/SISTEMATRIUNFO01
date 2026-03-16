@@ -1,43 +1,48 @@
-// Existing code...
+const express = require('express');
+const prisma = require('@prisma/client');
 
-// Fixing SyntaxError in /api/req quantity validation string
-if (!req.body.quantity || typeof req.body.quantity !== 'string') {
-    return res.status(400).send('Invalid quantity');
-}
+const app = express();
+app.use(express.json());
 
-// Removing stray backslash in allowed array in PATCH /api/req/:id/status
-app.patch('/api/req/:id/status', (req, res) => {
-    const allowedStatuses = ['pending', 'approved', 'rejected'];
-    // No stray backslash here
-    if (!allowedStatuses.includes(req.body.status)) {
-        return res.status(400).send('Invalid status');
+// POST /api/req
+app.post('/api/req', async (req, res) => {
+    const { quantidade } = req.body;
+    const erros = [];
+    if (!quantidade) {
+        erros.push("quantidade is required");
     }
-    // Update logic...
+    if (erros.length) {
+        return res.status(400).json({ erros });
+    }
+    // proceed with the business logic...
 });
 
-// Replacing the mistaken String(x||"{}") defaults back to empty string
-const OSCreate = {
-    field1: '',  // Change here
-    field2: ''   // Change here
-};
-
-const reqCreate = {
-    field1: '',  // Change here
-    field2: ''   // Change here
-};
-
-const abastCreate = {
-    field1: '',  // Change here
-    field2: ''   // Change here
-};
-
-// Keeping DELETE routes
-app.delete('/api/req/:id', (req, res) => {
-    // Logic for DELETE req
+// PATCH /api/req/:id/status
+app.patch('/api/req/:id/status', async (req, res) => {
+    const { id } = req.params;
+    // business logic...
+    res.sendStatus(204);
 });
 
-app.delete('/api/abast/:id', (req, res) => {
-    // Logic for DELETE abast
+// POST /api/os
+app.post('/api/os', async (req, res) => {
+    const { x } = req.body;
+    res.json({ value: String(x || '') });
 });
 
-// Additional code...
+// POST /api/req
+app.post('/api/req', async (req, res) => {
+    const { x } = req.body;
+    res.json({ value: String(x || '') });
+});
+
+// POST /api/abast
+app.post('/api/abast', async (req, res) => {
+    const { x } = req.body;
+    res.json({ value: String(x || '') });
+});
+
+// Server start
+app.listen(3000, () => {
+    console.log('Server is running on port 3000');
+});
