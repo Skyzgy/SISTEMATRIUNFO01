@@ -61,3 +61,8 @@ lerna-debug.log*
 # ===========================================
 .cache/
 .eslintcache
+
+# ===========================================
+# BACKUPS (gerados localmente, nunca subir)
+# ===========================================
+backups/

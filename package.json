@@ -8,19 +8,20 @@
   },
   "scripts": {
     "start": "node server/server.js",
-    
+
     "postinstall": "npx prisma generate --schema server/prisma/schema.prisma",
-    
+
     "migrate:deploy": "npx prisma migrate deploy --schema server/prisma/schema.prisma",
-    
+
     "dev": "nodemon server/server.js",
-    
+
     "prisma:migrate": "npx prisma migrate deploy --schema server/prisma/schema.prisma",
-    "prisma:status": "npx prisma migrate status --schema server/prisma/schema.prisma",
-    "prisma:studio": "npx prisma studio --schema server/prisma/schema.prisma",
+    "prisma:status": "npx prisma migrate status --schema server/prisma/schema.prisma --env-file server/.env",
+    "prisma:studio": "npx prisma studio --schema server/prisma/schema.prisma --env-file server/.env",
     "prisma:generate": "npx prisma generate --schema server/prisma/schema.prisma",
-    
+
     "backup": "node scripts/backup-db.js",
+    "health-check": "node scripts/health-check.js",
     "deploy:safe": "npm run backup && npm run prisma:migrate && npm start"
   },
   "dependencies": {
