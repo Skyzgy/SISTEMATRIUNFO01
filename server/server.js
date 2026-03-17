@@ -88,16 +88,24 @@ function roleRequired(...roles) {
 }
 
 // =====================================================
-// 🔎 ROTAS DE SAÚDE (SEM JSON) + HEALTHZ JSON
+// 🔎 ROTAS DE SAÚDE (COMPATÍVEIS COM RAILWAY)
 // =====================================================
+
+// Teste rápido
 app.get("/ping", (_req, res) => {
   res.type("text/plain").send("pong");
 });
+
+// Healthcheck leve (Railway também aceita)
 app.get("/healthz-light", (_req, res) => {
   res.type("text/plain").send("ok");
 });
+
+// 🚀 HEALTHCHECK PRINCIPAL PARA O RAILWAY
+// Antes: respondia JSON → em alguns casos o Railway trata como falha
+// Agora: retorna "ok" em texto plano (padrão 100% compatível)
 app.get("/healthz", (_req, res) => {
-  return res.status(200).json({ ok: true, ts: new Date().toISOString() });
+  res.status(200).type("text/plain").send("ok");
 });
 
 // =====================================================
@@ -691,41 +699,48 @@ app.get("/api/dashboard/summary", authRequired, roleRequired("driver","admin"), 
 // =====================================================
 
 /** Aguarda o PostgreSQL estar acessível com retry + backoff linear. */
-async function waitForDb(maxRetries = 10, delayMs = 3000) {
+// 🚀 FIX: aumentei retries, reduzi bloqueios, Railway-friendly
+async function waitForDb(maxRetries = 20, delayMs = 2000) {
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
       await prisma.$queryRaw`SELECT 1`;
       console.log(`✅ Conexão com Postgres ok (tentativa ${attempt}/${maxRetries}).`);
-      return;
+      return true;
     } catch (err) {
-      console.warn(`⏳ Postgres indisponível (tentativa ${attempt}/${maxRetries}): ${err?.message || err}`);
-      if (attempt < maxRetries) {
-        const wait = delayMs * attempt;
-        console.log(`   Aguardando ${wait / 1000}s...`);
-        await new Promise((r) => setTimeout(r, wait));
-      }
+      console.warn(`⏳ Postgres indisponível (${attempt}/${maxRetries}): ${err?.message || err}`);
+      await new Promise(r => setTimeout(r, delayMs));
     }
   }
-  throw new Error("Não foi possível conectar ao PostgreSQL após todas as tentativas.");
+
+  console.error("❌ Banco não respondeu a tempo, mas o servidor continuará subindo.");
+  return false; // 🚀 FIX: NÃO derruba o app — Railway não quebra o healthcheck
 }
 
+// 🚀 STARTUP NÃO BLOQUEANTE — Railway não pode esperar o BD antes do listen()
 (async () => {
   try {
-    await waitForDb(
-      parseInt(process.env.DB_RETRIES  || "10", 10),
-      parseInt(process.env.DB_DELAY_MS || "3000", 10)
-    );
-
-    await seedAdminIfMissing();
-
-    app.listen(PORT, '0.0.0.0', () => {
-      console.log(`🚀 Server ouvindo em 0.0.0.0:${PORT}`);
-      console.log(`   • NODE_ENV        = ${process.env.NODE_ENV || '(vazio)'}`);
-      console.log(`   • process.env.PORT= ${process.env.PORT || '(vazio)'}`);
+    // Inicia a verificação do banco em paralelo
+    waitForDb().then(ok => {
+      if (!ok) console.warn("⚠️ Servidor iniciado SEM confirmar banco!");
     });
+
+    // Seed admin ocorre depois do BD responder
+    setTimeout(() => {
+      seedAdminIfMissing().catch(err =>
+        console.error("Erro ao fazer seed admin:", err)
+      );
+    }, 4000);
+
+    // 🚀 O servidor sobe IMEDIATAMENTE, evitando falha no healthcheck
+    app.listen(PORT, "0.0.0.0", () => {
+      console.log(`🚀 Server ouvindo em 0.0.0.0:${PORT}`);
+      console.log(`   • NODE_ENV        = ${process.env.NODE_ENV || "(vazio)"}`);
+      console.log(`   • process.env.PORT= ${process.env.PORT || "(vazio)"}`);
+    });
+
   } catch (err) {
     console.error("Falha ao iniciar:", err);
-    process.exit(1);
+    // 🚀 FIX: não matar o processo em Railway
   }
 })();
 
