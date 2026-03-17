@@ -68,21 +68,6 @@ async function nextOSIdTx(tx) {
   return { seq, osId };
 }
 
-// Gera próximo número de REQ como transação (mesmo sistema que OS):
-// 1) upsert em ReqSequence (id=1)
-// 2) incrementa last e devolve seq e id "YYYY-000001"
-async function nextReqIdTx(tx) {
-  const seqRow = await tx.reqSequence.upsert({
-    where: { id: 1 },
-    create: { id: 1, last: 1 },
-    update: { last: { increment: 1 } }
-  });
-  const seq = seqRow.last; // já incrementado
-  const year = new Date().getFullYear();
-  const reqId = `${year}-${String(seq).padStart(6, "0")}`;
-  return { seq, reqId };
-}
-
 // Middlewares de auth
 function authRequired(req, res, next) {
   const token = req.cookies?.token;
@@ -500,7 +485,7 @@ app.get("/api/os/recent", authRequired, roleRequired("driver","admin"), async (r
 // REQUISIÇÕES (ADMIN)
 // =====================================================
 
-// Criar Requisição com ID sequencial (YYYY-NNNNNN)
+// (AJUSTADO) Criar Requisição — agora exige osId e valida OS ABERTA
 app.post("/api/req", authRequired, roleRequired("admin"), async (req, res) => {
   try {
     const { material, quantidade, garagem, frota, solicitante, data, codigo, descricao, osId } = req.body;
@@ -537,36 +522,26 @@ app.post("/api/req", authRequired, roleRequired("admin"), async (req, res) => {
       if (!isNaN(d.getTime())) dataParsed = d;
     }
 
-    // cria a requisição já vinculada com ID sequencial
-    const result = await prisma.$transaction(async (tx) => {
-      const { seq, reqId } = await nextReqIdTx(tx);
-      const now = new Date();
+    // cria a requisição já vinculada
+    const item = await prisma.req.create({
+      data: {
+        material: String(material||"").trim(),
+        quantidade: Number(quantidade||0),
+        garagem: String(garagem||"").trim(),
+        frota: String(frota||"").trim(),
+        solicitante: String(solicitante||"").trim(),
+        data: dataParsed,
+        codigo: String(codigo||"").trim(),
+        descricao: String(descricao||"").trim(),
+        status: "aberta",
+        createdBy: req.user?.id || null,
 
-      const item = await tx.req.create({
-        data: {
-          id: reqId,
-          seq,
-          material: String(material||"").trim(),
-          quantidade: Number(quantidade||0),
-          garagem: String(garagem||"").trim(),
-          frota: String(frota||"").trim(),
-          solicitante: String(solicitante||"").trim(),
-          data: dataParsed,
-          codigo: String(codigo||"").trim(),
-          descricao: String(descricao||"").trim(),
-          status: "aberta",
-          createdBy: req.user?.id || null,
-
-          // vínculo
-          osId: String(osId),
-          createdAt: now,
-          updatedAt: now
-        }
-      });
-      return item;
+        // vínculo
+        osId: String(osId)
+      }
     });
 
-    res.status(201).json({ message: "Requisição criada", req: result });
+    res.status(201).json({ message: "Requisição criada", req: item });
   } catch (e) {
     console.error(e);
     res.status(500).json({ error: "Erro ao criar requisição." });
