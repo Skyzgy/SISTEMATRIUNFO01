@@ -689,15 +689,32 @@ app.get("/api/dashboard/summary", authRequired, roleRequired("driver","admin"), 
 // =====================================================
 // STARTUP
 // =====================================================
-(async () => {
-  try {
-    // Validação leve de conexão com DB (não bloqueia o start se falhar)
+
+/** Aguarda o PostgreSQL estar acessível com retry + backoff linear. */
+async function waitForDb(maxRetries = 10, delayMs = 3000) {
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
       await prisma.$queryRaw`SELECT 1`;
-      console.log("✅ Conexão com Postgres ok.");
-    } catch (dbErr) {
-      console.warn("⚠️  Não foi possível confirmar o Postgres agora:", dbErr?.message || dbErr);
+      console.log(`✅ Conexão com Postgres ok (tentativa ${attempt}/${maxRetries}).`);
+      return;
+    } catch (err) {
+      console.warn(`⏳ Postgres indisponível (tentativa ${attempt}/${maxRetries}): ${err?.message || err}`);
+      if (attempt < maxRetries) {
+        const wait = delayMs * attempt;
+        console.log(`   Aguardando ${wait / 1000}s...`);
+        await new Promise((r) => setTimeout(r, wait));
+      }
     }
+  }
+  throw new Error("Não foi possível conectar ao PostgreSQL após todas as tentativas.");
+}
+
+(async () => {
+  try {
+    await waitForDb(
+      parseInt(process.env.DB_RETRIES  || "10", 10),
+      parseInt(process.env.DB_DELAY_MS || "3000", 10)
+    );
 
     await seedAdminIfMissing();
 
