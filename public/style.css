@@ -140,11 +140,22 @@ a:hover { text-decoration: underline; }
   background: var(--panel);
   border:1px solid var(--line);
   border-radius:12px; padding:14px;
+
+  /* melhora legibilidade/contraste no dark */
+  box-shadow: 0 6px 18px rgba(0,0,0,.25);
 }
 .status-card-head{ display:flex; align-items:center; justify-content:space-between; margin-bottom:8px; }
-.status-label{ font-weight:600; color: var(--ink-2); }
-.status-icon{ opacity:.9; }
-.status-value{ font-size:28px; font-weight:700; color: var(--ink); }
+.status-label{ font-weight:700; color: #e8ecf3; letter-spacing:.2px; }
+.status-icon{ opacity:.95; font-size: 18px; }
+
+.status-value{
+  font-size: 30px;
+  font-weight: 800;
+  color: #ffffff;
+
+  /* deixa os números “saltarem” no fundo escuro */
+  text-shadow: 0 1px 0 rgba(0,0,0,.55);
+}
 
 /* cards de resumo */
 .resumo-container{ display:grid; gap:16px; margin-top:12px; }
@@ -153,8 +164,8 @@ a:hover { text-decoration: underline; }
   border:1px solid var(--line); border-radius:12px; padding:14px;
 }
 .card-largo-header{ display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:10px; }
-.title-wrap{ font-weight:600; color: var(--ink); }
-.link-ver-todas{ border:1px solid var(--line); background:transparent; padding:6px 10px; border-radius:8px; cursor:pointer; color:var(--ink); }
+.title-wrap{ font-weight:700; color: #f3f4f6; letter-spacing:.2px; }
+.link-ver-todas{ border:1px solid var(--line); background:transparent; padding:6px 10px; border-radius:8px; cursor:pointer; color:#f3f4f6; }
 .link-ver-todas:hover{ background: #161b25; }
 
 .empty-state{
@@ -313,7 +324,7 @@ a:hover { text-decoration: underline; }
 @media (max-width: 560px){
   .status-grid{ grid-template-columns: 1fr; }
   .section-title{ font-size: 18px; }
-  .status-value{ font-size: 24px; }
+  .status-value{ font-size: 26px; }
   .card-largo{ padding: 12px; }
   .card-largo-header{ flex-direction: column; align-items:flex-start; gap:8px; }
 }
