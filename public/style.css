@@ -346,3 +346,52 @@ a:hover { text-decoration: underline; }
     min-height: 44px;
   }
 }
+
+/* =========================================================
+   ✅ FIX: texto azul (links) dentro dos cards de "ÚLTIMAS OS"
+   e "ÚLTIMAS REQUISIÇÕES"
+   - remove azul padrão de <a>
+   - deixa legível no tema escuro
+   - hover/active com identidade do app
+========================================================= */
+
+.card-largo a,
+#lista-vazia a,
+#lista-requisicoes a{
+  color: #eaf0ff;               /* claro (não azul padrão) */
+  text-decoration: none;
+}
+
+.card-largo a:hover,
+#lista-vazia a:hover,
+#lista-requisicoes a:hover{
+  color: #ffffff;
+  text-decoration: underline;
+  text-decoration-color: rgba(255,255,255,.45);
+}
+
+.card-largo a:visited,
+#lista-vazia a:visited,
+#lista-requisicoes a:visited{
+  color: #eaf0ff;               /* mantém igual (sem roxo de visited) */
+}
+
+.card-largo a:focus-visible,
+#lista-vazia a:focus-visible,
+#lista-requisicoes a:focus-visible{
+  outline: 2px solid var(--brand);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+/* Se o conteúdo vier como <button> ou <span> clicável com underline,
+   esse ajuste ajuda a legibilidade também */
+#lista-vazia,
+#lista-requisicoes{
+  color: var(--ink);
+}
+
+#lista-vazia * ,
+#lista-requisicoes *{
+  text-shadow: 0 1px 0 rgba(0,0,0,.55);
+}
