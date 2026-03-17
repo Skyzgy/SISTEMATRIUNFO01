@@ -145,13 +145,6 @@
       box-shadow:0 0 0 4px rgba(230,20,20,.25);
     }
 
-    .error-message{
-      font-size:12px;
-      color:#ff6b6b;
-      margin-top:4px;
-      display:none;
-    }
-
     .forgot-password{
       text-align:center;
       margin:20px 0;
@@ -204,6 +197,11 @@
 
     .btn-submit:hover{
       background:var(--brand-600);
+    }
+
+    .btn-submit:disabled{
+      background:#666;
+      cursor:not-allowed;
     }
 
     .success{
@@ -262,7 +260,6 @@
             placeholder="Insira seu nome completo"
             required
           />
-          <div class="error-message"></div>
         </div>
 
         <div class="form-group">
@@ -270,10 +267,10 @@
           <input 
             id="login_senha" 
             type="password" 
-            placeholder="Insira sua senha"
+            placeholder="6 dígitos numéricos"
+            maxlength="6"
             required
           />
-          <div class="error-message"></div>
         </div>
 
         <div class="forgot-password">
@@ -283,7 +280,7 @@
         <div id="login-erro" class="error"></div>
         <div id="login-sucesso" class="success"></div>
 
-        <button type="submit" class="btn-submit">ENTRAR</button>
+        <button type="submit" class="btn-submit" id="btnLogin">ENTRAR</button>
 
         <div class="signup-link">
           Sem login? <a onclick="showCadastro()">Faça seu cadastro</a>
@@ -306,19 +303,17 @@
             placeholder="Insira seu nome completo"
             required
           />
-          <div class="error-message"></div>
         </div>
 
         <div class="form-group">
-          <label for="cadastro_senha">Senha (mín. 6 caracteres)</label>
+          <label for="cadastro_senha">Senha (6 dígitos numéricos)</label>
           <input 
             id="cadastro_senha" 
             type="password" 
-            placeholder="Crie uma senha"
-            minlength="6"
+            placeholder="Ex.: 123456"
+            maxlength="6"
             required
           />
-          <div class="error-message"></div>
         </div>
 
         <div class="form-group">
@@ -327,15 +322,15 @@
             id="cadastro_confirma" 
             type="password" 
             placeholder="Confirme sua senha"
+            maxlength="6"
             required
           />
-          <div class="error-message"></div>
         </div>
 
         <div id="cadastro-erro" class="error"></div>
         <div id="cadastro-sucesso" class="success"></div>
 
-        <button type="submit" class="btn-submit">CRIAR CONTA</button>
+        <button type="submit" class="btn-submit" id="btnCadastro">CRIAR CONTA</button>
 
         <div class="signup-link">
           Já tem conta? <a onclick="showLogin()">Faça login</a>
@@ -347,11 +342,13 @@
   </div>
 
   <script>
+    // ============ FUNÇÕES AUXILIARES ============
     function showLogin() {
       document.getElementById('loginForm').classList.remove('hidden');
       document.getElementById('cadastroForm').classList.add('hidden');
       document.getElementById('tabLogin').classList.add('active');
       document.getElementById('tabCadastro').classList.remove('active');
+      limparMensagens();
     }
 
     function showCadastro() {
@@ -359,63 +356,185 @@
       document.getElementById('cadastroForm').classList.remove('hidden');
       document.getElementById('tabLogin').classList.remove('active');
       document.getElementById('tabCadastro').classList.add('active');
+      limparMensagens();
     }
 
-    function handleLogin(event) {
-      event.preventDefault();
-      const nome = document.getElementById('login_nome').value;
-      const senha = document.getElementById('login_senha').value;
-
-      // Validação básica
-      if (!nome || !senha) {
-        showError('login-erro', 'Preencha todos os campos');
-        return;
-      }
-
-      console.log('Login:', { nome, senha });
-      showSuccess('login-sucesso', 'Login realizado com sucesso!');
-      // Aqui você faz a chamada à API
-    }
-
-    function handleCadastro(event) {
-      event.preventDefault();
-      const nome = document.getElementById('cadastro_nome').value;
-      const senha = document.getElementById('cadastro_senha').value;
-      const confirma = document.getElementById('cadastro_confirma').value;
-
-      // Validação básica
-      if (!nome || !senha || !confirma) {
-        showError('cadastro-erro', 'Preencha todos os campos');
-        return;
-      }
-
-      if (senha !== confirma) {
-        showError('cadastro-erro', 'As senhas não coincidem');
-        return;
-      }
-
-      if (senha.length < 6) {
-        showError('cadastro-erro', 'A senha deve ter no mínimo 6 caracteres');
-        return;
-      }
-
-      console.log('Cadastro:', { nome, senha });
-      showSuccess('cadastro-sucesso', 'Conta criada com sucesso!');
-      // Aqui você faz a chamada à API
+    function limparMensagens() {
+      document.querySelectorAll('.error, .success').forEach(el => {
+        el.style.display = 'none';
+      });
     }
 
     function showError(elementId, message) {
       const errorEl = document.getElementById(elementId);
       errorEl.textContent = message;
       errorEl.style.display = 'block';
-      setTimeout(() => errorEl.style.display = 'none', 5000);
     }
 
     function showSuccess(elementId, message) {
       const successEl = document.getElementById(elementId);
       successEl.textContent = message;
       successEl.style.display = 'block';
-      setTimeout(() => successEl.style.display = 'none', 5000);
+    }
+
+    // Divide "João da Silva" em { firstName, lastName }
+    function splitFullName(fullName) {
+      const parts = fullName.trim().split(/\s+/);
+      if (parts.length < 2) return null;
+      
+      const firstName = parts[0];
+      const lastName = parts.slice(1).join(' ');
+      return { firstName, lastName };
+    }
+
+    // Valida se é 6 dígitos numéricos
+    function isSixDigitPassword(password) {
+      return /^\d{6}$/.test(password);
+    }
+
+    // ============ HANDLERS DE FORMULÁRIO ============
+    async function handleLogin(event) {
+      event.preventDefault();
+      
+      const nomeCompleto = document.getElementById('login_nome').value.trim();
+      const senha = document.getElementById('login_senha').value.trim();
+      const btnSubmit = document.getElementById('btnLogin');
+
+      // Validar nome
+      const names = splitFullName(nomeCompleto);
+      if (!names) {
+        showError('login-erro', 'Informe nome completo (nome e sobrenome).');
+        return;
+      }
+
+      // Validar senha
+      if (!isSixDigitPassword(senha)) {
+        showError('login-erro', 'Senha inválida. Use 6 dígitos numéricos.');
+        return;
+      }
+
+      btnSubmit.disabled = true;
+      btnSubmit.textContent = 'Entrando...';
+
+      try {
+        const response = await fetch('/api/auth/login', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          credentials: 'include',
+          body: JSON.stringify({
+            firstName: names.firstName,
+            lastName: names.lastName,
+            password: senha
+          })
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+          showSuccess('login-sucesso', data.message || 'Login realizado com sucesso!');
+          
+          // Redirecionar após 2 segundos
+          setTimeout(() => {
+            window.location.href = '/';
+          }, 2000);
+        } else {
+          showError('login-erro', data.error || 'Erro ao fazer login');
+        }
+      } catch (error) {
+        console.error('Erro:', error);
+        showError('login-erro', 'Erro de conexão com o servidor');
+      } finally {
+        btnSubmit.disabled = false;
+        btnSubmit.textContent = 'ENTRAR';
+      }
+    }
+
+    async function handleCadastro(event) {
+      event.preventDefault();
+      
+      const nomeCompleto = document.getElementById('cadastro_nome').value.trim();
+      const senha = document.getElementById('cadastro_senha').value.trim();
+      const confirma = document.getElementById('cadastro_confirma').value.trim();
+      const btnSubmit = document.getElementById('btnCadastro');
+
+      // Validar nome
+      const names = splitFullName(nomeCompleto);
+      if (!names) {
+        showError('cadastro-erro', 'Informe nome completo (nome e sobrenome).');
+        return;
+      }
+
+      // Validar senha
+      if (!isSixDigitPassword(senha)) {
+        showError('cadastro-erro', 'Senha deve ter exatamente 6 dígitos numéricos.');
+        return;
+      }
+
+      // Validar confirmação
+      if (senha !== confirma) {
+        showError('cadastro-erro', 'As senhas não coincidem.');
+        return;
+      }
+
+      btnSubmit.disabled = true;
+      btnSubmit.textContent = 'Criando conta...';
+
+      try {
+        const response = await fetch('/api/auth/register', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          credentials: 'include',
+          body: JSON.stringify({
+            firstName: names.firstName,
+            lastName: names.lastName,
+            password: senha
+          })
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+          showSuccess('cadastro-sucesso', data.message || 'Conta criada com sucesso!');
+          
+          // Fazer login automático
+          setTimeout(async () => {
+            try {
+              const loginResponse = await fetch('/api/auth/login', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                },
+                credentials: 'include',
+                body: JSON.stringify({
+                  firstName: names.firstName,
+                  lastName: names.lastName,
+                  password: senha
+                })
+              });
+
+              if (loginResponse.ok) {
+                window.location.href = '/';
+              } else {
+                showLogin();
+              }
+            } catch (e) {
+              showLogin();
+            }
+          }, 1500);
+        } else {
+          showError('cadastro-erro', data.error || 'Erro ao criar conta');
+        }
+      } catch (error) {
+        console.error('Erro:', error);
+        showError('cadastro-erro', 'Erro de conexão com o servidor');
+      } finally {
+        btnSubmit.disabled = false;
+        btnSubmit.textContent = 'CRIAR CONTA';
+      }
     }
   </script>
 </body>
