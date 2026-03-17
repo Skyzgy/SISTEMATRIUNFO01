@@ -12,6 +12,11 @@
     "postinstall": "npx prisma generate --schema server/prisma/schema.prisma",
 
     "migrate:deploy": "npx prisma migrate deploy --schema server/prisma/schema.prisma",
+    "prisma:migrate": "npx prisma migrate deploy --schema server/prisma/schema.prisma",
+
+    "backup": "node scripts/backup-db.js",
+    "health-check": "node scripts/health-check.js",
+    "deploy:safe": "npm run backup && npm run prisma:migrate && npm start",
 
     "dev": "node server/server.js",
 
