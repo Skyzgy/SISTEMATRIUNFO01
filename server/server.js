@@ -532,6 +532,9 @@ process.on("unhandledRejection", (r) => {
 process.on("uncaughtException", (e) => {
   console.error("uncaughtException:", e);
 });
+<<<<<<< HEAD
 =======
 module.exports = router;
 >>>>>>> cf4a5ea6bf36b63a2912857e3a9d5882498942a6
+=======
+>>>>>>> parent of 035c184 (Gigante)
