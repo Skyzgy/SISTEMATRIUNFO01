@@ -5,277 +5,218 @@
   <meta name="viewport" content="width=device-width,initial-scale=1"/>
   <title>Triunfo • Acesso</title>
 
-  <!-- Preferências do tema e escala -->
   <meta name="color-scheme" content="dark light"/>
   <meta name="theme-color" content="#0c0f15"/>
 
   <style>
-    /* =========================
-       Design System (Triunfo)
-    ========================== */
     :root{
       --brand: #E61414;
       --brand-600:#cf1313;
-      --brand-500:#ff4444;
-
       --bg: #0b0e14;
-      --bg-2:#0f131b;
       --ink:#eef3ff;
       --muted:#9aa8c3;
       --line: rgba(255,255,255,.08);
-
-      --glass: rgba(255,255,255,.04);
-      --shadow: 0 22px 70px rgba(0,0,0,.55);
-
-      --r: 18px;
-      --r-sm: 14px;
-      --r-xs: 10px;
       --t: .22s ease;
     }
 
     *,*::before,*::after{ box-sizing:border-box }
-    html, body { height:100% }
+    html, body { height:100%; margin:0 }
+    
     body{
-      margin:0;
       font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Inter, Roboto, Arial, sans-serif;
       color:var(--ink);
       background:
         radial-gradient(50% 40% at 15% 0%, rgba(230,20,20,.20) 0%, rgba(230,20,20,0) 60%),
         radial-gradient(40% 32% at 85% -8%, rgba(255,255,255,.06) 0%, rgba(255,255,255,0) 60%),
         linear-gradient(180deg, #0a0d13 0%, #0b0e14 100%);
-      min-height:100%;
+      min-height:100vh;
       display:grid;
       place-items:center;
+      padding:20px;
     }
 
-    .auth-shell{
-      width:min(1080px,100%);
-      margin:24px;
-      border-radius:var(--r);
-      overflow:hidden;
-      background:var(--bg-2);
-      border:1px solid var(--line);
-      box-shadow: var(--shadow);
-      display:grid;
-      grid-template-columns: 1.05fr 1fr;
-      position:relative;
-      isolation:isolate;
-    }
-    @media (max-width: 900px){
-      .auth-shell{ grid-template-columns: 1fr; }
-      .brand-panel{ display:none; }
+    .auth-container{
+      width:100%;
+      max-width:500px;
+      text-align:center;
     }
 
-    .auth-shell::before{
-      content:"";
-      position:absolute; inset:0 0 auto 0; height:6px; z-index:2;
-      background: linear-gradient(90deg, #ff2a2a, var(--brand), #ff4444);
+    .logo-section{
+      margin-bottom:50px;
     }
 
-    .brand-panel{
-      padding:40px 44px;
-      background:
-        linear-gradient(180deg, rgba(255,255,255,.025), rgba(255,255,255,0)),
-        radial-gradient(60% 45% at 20% 0%, rgba(230,20,20,.18), transparent 60%),
-        linear-gradient(180deg, #0c1018, #0f131b);
-      border-right:1px solid var(--line);
-      display:flex;
-      flex-direction:column;
-      gap:28px;
-      justify-content:center;
-    }
-    .brand-top{
-      display:flex; align-items:center; gap:16px;
-    }
-    .brand-logo{
-      width:46px; height:46px; border-radius:12px;
-      background: radial-gradient(60% 60% at 40% 35%, #ff5a5a, #E61414);
-      box-shadow: 0 12px 28px rgba(230,20,20,.45), inset 0 0 18px rgba(255,255,255,.22);
-      display:grid; place-items:center;
-      color:#fff; font-weight:900; font-size:22px;
-    }
-    .brand-title{
-      margin:0; font-size:22px; font-weight:800;
-    }
-    .brand-claim{
-      margin:0; color:var(--muted); line-height:1.55; font-size:15px;
-    }
-    .brand-bullets{
-      display:grid; gap:10px; margin-top:6px;
+    .logo-title{
+      margin:0 0 8px 0;
+      font-size:32px;
+      font-weight:900;
+      letter-spacing:-0.5px;
     }
 
-    .bullet{
-      display:flex; align-items:center; gap:10px; color:#cfe0ff; font-size:14px;
-    }
-    .bullet i{
-      width:22px; height:22px; display:grid; place-items:center;
-      border-radius:6px; background:rgba(230,20,20,.18); color:#fff; font-size:13px;
-      border:1px solid rgba(230,20,20,.35);
+    .logo-subtitle{
+      margin:0;
+      color:var(--muted);
+      font-size:14px;
+      font-style:italic;
     }
 
-    /* Card */
-    .card{
-      padding:38px; display:flex; flex-direction:column; gap:18px;
-      background:
-        linear-gradient(180deg, var(--glass), rgba(255,255,255,0)),
-        var(--bg-2);
-    }
-
-    .card-header{
-      display:flex; align-items:center; justify-content:space-between;
-      padding-bottom:16px; border-bottom:1px solid var(--line);
-    }
-
-    .card-title{ margin:0; font-size:20px; font-weight:700 }
-
-    .switch{
-      display:flex; align-items:center; gap:10px; color:var(--muted); font-size:14px;
-    }
-    .switch-link{
-      color:#fff; text-decoration:none;
-      padding:8px 12px;
-      border-radius:12px;
+    .form-section{
       background: rgba(255,255,255,.03);
       border:1px solid var(--line);
-      transition:var(--t);
-    }
-    .switch-link:hover{
-      background:rgba(230,20,20,.18);
-      border-color:rgba(230,20,20,.5);
-    }
-
-    .panel{
-      background: rgba(255,255,255,.03);
-      border:1px solid var(--line);
-      border-radius:var(--r-sm);
-      padding:26px; display:grid; gap:10px;
+      border-radius:18px;
+      padding:40px 30px;
       backdrop-filter: blur(8px);
     }
 
-    label{ font-size:13px; color:var(--muted); margin-top:10px }
+    .form-title{
+      margin:0 0 30px 0;
+      font-size:24px;
+      font-weight:700;
+      letter-spacing:1px;
+    }
+
+    .form-group{
+      display:flex;
+      flex-direction:column;
+      gap:8px;
+      margin-bottom:24px;
+      text-align:left;
+    }
+
+    label{
+      font-size:14px;
+      color:var(--ink);
+      font-weight:600;
+    }
+
     input{
-      width:100%; padding:14px;
-      border-radius:12px; border:1px solid rgba(255,255,255,.12);
+      width:100%;
+      padding:16px;
+      border-radius:14px;
+      border:2px solid rgba(230,20,20,.5);
       background:rgba(0,0,0,.35);
-      color:var(--ink); font-size:15px;
+      color:var(--ink);
+      font-size:16px;
       transition:var(--t);
     }
+
+    input::placeholder{
+      color:rgba(157,170,195,.6);
+    }
+
     input:focus{
+      outline:none;
       border-color:var(--brand);
-      box-shadow:0 0 0 3px rgba(230,20,20,.22);
+      box-shadow:0 0 0 4px rgba(230,20,20,.25);
     }
 
-    .actions{ display:flex; gap:12px; margin-top:14px; flex-wrap:wrap }
-
-    .btn{
-      display:inline-flex; justify-content:center; align-items:center;
-      border:none; cursor:pointer; font-weight:800;
-      padding:13px 18px; border-radius:14px; transition:var(--t);
-    }
-    .btn-brand{ background:var(--brand); color:#fff }
-    .btn-brand:hover{ background:var(--brand-600) }
-
-    .btn-ghost{
-      background:transparent; color:var(--muted);
-      border:1px solid var(--line);
+    .error-message{
+      font-size:12px;
+      color:#ff6b6b;
+      margin-top:4px;
+      display:none;
     }
 
-    .error,.success{
-      display:none; margin-top:10px; padding:12px; border-radius:12px; font-size:14px;
+    .forgot-password{
+      text-align:center;
+      margin:20px 0;
     }
-    .error{
-      background:#3a1216; border:1px solid #6a1e25; color:#ffc7c7;
+
+    .forgot-password a{
+      color:var(--brand);
+      text-decoration:none;
+      font-size:14px;
+      font-weight:600;
+      transition:var(--t);
     }
+
+    .forgot-password a:hover{
+      opacity:0.8;
+    }
+
+    .btn-login{
+      width:100%;
+      padding:16px;
+      background:var(--brand);
+      color:#fff;
+      border:none;
+      border-radius:14px;
+      font-size:16px;
+      font-weight:800;
+      letter-spacing:0.5px;
+      cursor:pointer;
+      transition:var(--t);
+      margin-top:20px;
+    }
+
+    .btn-login:hover{
+      background:var(--brand-600);
+    }
+
     .success{
-      background:#0f251d; border:1px solid #1c5a44; color:#baf3d2;
+      display:none;
+      margin-top:10px;
+      padding:12px;
+      border-radius:12px;
+      font-size:14px;
+      background:#0f251d;
+      border:1px solid #1c5a44;
+      color:#baf3d2;
     }
 
     .hidden{ display:none !important }
-    .sr-only{
-      position:absolute; width:1px; height:1px;
-      overflow:hidden; clip:rect(0,0,0,0);
-    }
   </style>
 </head>
 
 <body>
 
-  <main class="auth-shell">
+  <div class="auth-container">
 
-    <!-- Painel esquerdo -->
-    <section class="brand-panel">
-      <div class="brand-top">
-        <div class="brand-logo">T</div>
-        <h1 class="brand-title">Viação Triunfo</h1>
-      </div>
+    <!-- Logo e Título -->
+    <div class="logo-section">
+      <h1 class="logo-title">Viação Triunfo</h1>
+      <p class="logo-subtitle">Sistema de Gestão</p>
+    </div>
 
-      <p class="brand-claim">
-        Plataforma oficial da <strong>Viação Triunfo</strong> para gestão de frota,
-        ordens de serviço e requisições.
-      </p>
+    <!-- Formulário -->
+    <div class="form-section">
+      <h2 class="form-title">LOGIN</h2>
 
-      <div class="brand-bullets">
-        <div class="bullet"><i>✓</i> Login rápido e seguro</div>
-        <div class="bullet"><i>✓</i> Painel limpo e intuitivo</div>
-        <div class="bullet"><i>✓</i> Acesso Motorista / Admin</div>
-      </div>
-    </section>
-
-    <!-- Painel direito -->
-    <section class="card">
-
-      <header class="card-header">
-        <h2 class="card-title">Acesso ao Sistema</h2>
-
-        <div class="switch">
-          <span id="switchText">Já tem conta?</span>
-          <a id="toggleLink" class="switch-link" href="#entrar">Entrar</a>
-        </div>
-      </header>
-
-      <!-- CADASTRO -->
-      <form id="form-cadastro" class="panel">
-
-        <label for="su_nome">Nome</label>
-        <input id="su_nome" type="text" placeholder="Ex.: João" required/>
-
-        <label for="su_sobrenome">Sobrenome</label>
-        <input id="su_sobrenome" type="text" placeholder="Ex.: da Silva" required/>
-
-        <label for="su_senha">Senha (mín. 6)</label>
-        <input id="su_senha" type="password" minlength="6" placeholder="Crie uma senha" required/>
-
-        <div class="actions">
-          <button class="btn btn-brand" type="submit">Criar conta</button>
+      <form id="form-login">
+        
+        <div class="form-group">
+          <label for="nome">Nome e Sobrenome</label>
+          <input 
+            id="nome" 
+            type="text" 
+            placeholder="Insira seu nome completo"
+            required
+          />
+          <div class="error-message"></div>
         </div>
 
-        <div id="cad-erro" class="error"></div>
-        <div id="cad-ok" class="success"></div>
+        <div class="form-group">
+          <label for="senha">Senha</label>
+          <input 
+            id="senha" 
+            type="password" 
+            placeholder="Insira sua senha"
+            required
+          />
+          <div class="error-message"></div>
+        </div>
+
+        <div class="forgot-password">
+          <a href="#esqueci">Esqueci minha senha</a>
+        </div>
+
+        <div id="msg-sucesso" class="success"></div>
+
+        <button type="submit" class="btn-login">ENTRAR</button>
+
       </form>
+    </div>
 
-      <!-- LOGIN -->
-      <form id="form-login" class="panel hidden">
-
-        <label for="si_nome">Nome</label>
-        <input id="si_nome" type="text" placeholder="Ex.: João"/>
-
-        <label for="si_sobrenome">Sobrenome</label>
-        <input id="si_sobrenome" type="text" placeholder="Ex.: da Silva"/>
-
-        <label for="si_senha">Senha</label>
-        <input id="si_senha" type="password" placeholder="Sua senha"/>
-
-        <div class="actions">
-          <button class="btn btn-brand" type="submit">Entrar</button>
-          <button class="btn btn-ghost" type="button" id="btnVoltarCadastro">← Voltar</button>
-        </div>
-
-        <div id="log-erro" class="error"></div>
-      </form>
-
-    </section>
-
-  </main>
+  </div>
 
   <script type="module" src="/js/auth-page.js"></script>
 </body>
