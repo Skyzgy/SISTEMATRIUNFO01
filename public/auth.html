@@ -59,12 +59,48 @@
       font-style:italic;
     }
 
+    .tab-navigation{
+      display:flex;
+      gap:15px;
+      margin-bottom:30px;
+      border-bottom:2px solid var(--line);
+      padding-bottom:15px;
+    }
+
+    .tab-btn{
+      flex:1;
+      background:none;
+      border:none;
+      color:var(--muted);
+      font-size:16px;
+      font-weight:700;
+      cursor:pointer;
+      padding:10px;
+      border-bottom:3px solid transparent;
+      transition:var(--t);
+      position:relative;
+      bottom:-17px;
+    }
+
+    .tab-btn.active{
+      color:var(--ink);
+      border-bottom-color:var(--brand);
+    }
+
+    .tab-btn:hover{
+      color:var(--ink);
+    }
+
     .form-section{
       background: rgba(255,255,255,.03);
       border:1px solid var(--line);
       border-radius:18px;
       padding:40px 30px;
       backdrop-filter: blur(8px);
+      min-height:350px;
+      display:flex;
+      flex-direction:column;
+      justify-content:center;
     }
 
     .form-title{
@@ -78,7 +114,7 @@
       display:flex;
       flex-direction:column;
       gap:8px;
-      margin-bottom:24px;
+      margin-bottom:20px;
       text-align:left;
     }
 
@@ -133,7 +169,25 @@
       opacity:0.8;
     }
 
-    .btn-login{
+    .signup-link{
+      margin-top:20px;
+      font-size:14px;
+      color:var(--muted);
+    }
+
+    .signup-link a{
+      color:var(--brand);
+      text-decoration:none;
+      font-weight:600;
+      cursor:pointer;
+      transition:var(--t);
+    }
+
+    .signup-link a:hover{
+      opacity:0.8;
+    }
+
+    .btn-submit{
       width:100%;
       padding:16px;
       background:var(--brand);
@@ -148,7 +202,7 @@
       margin-top:20px;
     }
 
-    .btn-login:hover{
+    .btn-submit:hover{
       background:var(--brand-600);
     }
 
@@ -161,6 +215,17 @@
       background:#0f251d;
       border:1px solid #1c5a44;
       color:#baf3d2;
+    }
+
+    .error{
+      display:none;
+      margin-top:10px;
+      padding:12px;
+      border-radius:12px;
+      font-size:14px;
+      background:#3a1216;
+      border:1px solid #6a1e25;
+      color:#ffc7c7;
     }
 
     .hidden{ display:none !important }
@@ -177,16 +242,22 @@
       <p class="logo-subtitle">Sistema de Gestão</p>
     </div>
 
-    <!-- Formulário -->
-    <div class="form-section">
+    <!-- Abas de Navegação -->
+    <div class="tab-navigation">
+      <button class="tab-btn active" id="tabLogin" onclick="showLogin()">Login</button>
+      <button class="tab-btn" id="tabCadastro" onclick="showCadastro()">Cadastro</button>
+    </div>
+
+    <!-- Formulário de LOGIN -->
+    <div id="loginForm" class="form-section">
       <h2 class="form-title">LOGIN</h2>
 
-      <form id="form-login">
+      <form id="form-login" onsubmit="handleLogin(event)">
         
         <div class="form-group">
-          <label for="nome">Nome e Sobrenome</label>
+          <label for="login_nome">Nome e Sobrenome</label>
           <input 
-            id="nome" 
+            id="login_nome" 
             type="text" 
             placeholder="Insira seu nome completo"
             required
@@ -195,9 +266,9 @@
         </div>
 
         <div class="form-group">
-          <label for="senha">Senha</label>
+          <label for="login_senha">Senha</label>
           <input 
-            id="senha" 
+            id="login_senha" 
             type="password" 
             placeholder="Insira sua senha"
             required
@@ -209,15 +280,143 @@
           <a href="#esqueci">Esqueci minha senha</a>
         </div>
 
-        <div id="msg-sucesso" class="success"></div>
+        <div id="login-erro" class="error"></div>
+        <div id="login-sucesso" class="success"></div>
 
-        <button type="submit" class="btn-login">ENTRAR</button>
+        <button type="submit" class="btn-submit">ENTRAR</button>
+
+        <div class="signup-link">
+          Sem login? <a onclick="showCadastro()">Faça seu cadastro</a>
+        </div>
+
+      </form>
+    </div>
+
+    <!-- Formulário de CADASTRO -->
+    <div id="cadastroForm" class="form-section hidden">
+      <h2 class="form-title">CADASTRO</h2>
+
+      <form id="form-cadastro" onsubmit="handleCadastro(event)">
+        
+        <div class="form-group">
+          <label for="cadastro_nome">Nome e Sobrenome</label>
+          <input 
+            id="cadastro_nome" 
+            type="text" 
+            placeholder="Insira seu nome completo"
+            required
+          />
+          <div class="error-message"></div>
+        </div>
+
+        <div class="form-group">
+          <label for="cadastro_senha">Senha (mín. 6 caracteres)</label>
+          <input 
+            id="cadastro_senha" 
+            type="password" 
+            placeholder="Crie uma senha"
+            minlength="6"
+            required
+          />
+          <div class="error-message"></div>
+        </div>
+
+        <div class="form-group">
+          <label for="cadastro_confirma">Confirmar Senha</label>
+          <input 
+            id="cadastro_confirma" 
+            type="password" 
+            placeholder="Confirme sua senha"
+            required
+          />
+          <div class="error-message"></div>
+        </div>
+
+        <div id="cadastro-erro" class="error"></div>
+        <div id="cadastro-sucesso" class="success"></div>
+
+        <button type="submit" class="btn-submit">CRIAR CONTA</button>
+
+        <div class="signup-link">
+          Já tem conta? <a onclick="showLogin()">Faça login</a>
+        </div>
 
       </form>
     </div>
 
   </div>
 
-  <script type="module" src="/js/auth-page.js"></script>
+  <script>
+    function showLogin() {
+      document.getElementById('loginForm').classList.remove('hidden');
+      document.getElementById('cadastroForm').classList.add('hidden');
+      document.getElementById('tabLogin').classList.add('active');
+      document.getElementById('tabCadastro').classList.remove('active');
+    }
+
+    function showCadastro() {
+      document.getElementById('loginForm').classList.add('hidden');
+      document.getElementById('cadastroForm').classList.remove('hidden');
+      document.getElementById('tabLogin').classList.remove('active');
+      document.getElementById('tabCadastro').classList.add('active');
+    }
+
+    function handleLogin(event) {
+      event.preventDefault();
+      const nome = document.getElementById('login_nome').value;
+      const senha = document.getElementById('login_senha').value;
+
+      // Validação básica
+      if (!nome || !senha) {
+        showError('login-erro', 'Preencha todos os campos');
+        return;
+      }
+
+      console.log('Login:', { nome, senha });
+      showSuccess('login-sucesso', 'Login realizado com sucesso!');
+      // Aqui você faz a chamada à API
+    }
+
+    function handleCadastro(event) {
+      event.preventDefault();
+      const nome = document.getElementById('cadastro_nome').value;
+      const senha = document.getElementById('cadastro_senha').value;
+      const confirma = document.getElementById('cadastro_confirma').value;
+
+      // Validação básica
+      if (!nome || !senha || !confirma) {
+        showError('cadastro-erro', 'Preencha todos os campos');
+        return;
+      }
+
+      if (senha !== confirma) {
+        showError('cadastro-erro', 'As senhas não coincidem');
+        return;
+      }
+
+      if (senha.length < 6) {
+        showError('cadastro-erro', 'A senha deve ter no mínimo 6 caracteres');
+        return;
+      }
+
+      console.log('Cadastro:', { nome, senha });
+      showSuccess('cadastro-sucesso', 'Conta criada com sucesso!');
+      // Aqui você faz a chamada à API
+    }
+
+    function showError(elementId, message) {
+      const errorEl = document.getElementById(elementId);
+      errorEl.textContent = message;
+      errorEl.style.display = 'block';
+      setTimeout(() => errorEl.style.display = 'none', 5000);
+    }
+
+    function showSuccess(elementId, message) {
+      const successEl = document.getElementById(elementId);
+      successEl.textContent = message;
+      successEl.style.display = 'block';
+      setTimeout(() => successEl.style.display = 'none', 5000);
+    }
+  </script>
 </body>
 </html>
