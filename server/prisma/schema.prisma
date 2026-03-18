@@ -1,5 +1,3 @@
-// server/prisma/schema.prisma
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -9,13 +7,11 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// ENUMs
 enum Role {
   driver
   admin
   mechanic
 }
-
 
 enum OSStatus {
   aberta
@@ -24,60 +20,57 @@ enum OSStatus {
   concluida
 }
 
-// MODELOS (espelhando sua estrutura atual)
-
-// Usuários (mantém formato usado hoje no back)
 model User {
-  id           String   @id @default(cuid())
+  id           String           @id @default(cuid())
   firstName    String
   lastName     String
   passwordHash String
-  role         Role     @default(driver)
-  createdAt    DateTime @default(now())
+  role         Role             @default(driver)
+  createdAt    DateTime         @default(now())
 
-  // Relacionamentos reversos (não obrigatórios usar agora)
-  os           OS[]              @relation("UserOS")
-  reqs         Req[]             @relation("UserReq")
-  abasts       Abastecimento[]   @relation("UserAbast")
+  os           OS[]             @relation("UserOS")
+  reqs         Req[]            @relation("UserReq")
+  abasts       Abastecimento[]  @relation("UserAbast")
 }
 
-// Sequência global das OS (uma única linha com id=1 e o "last")
 model OSSequence {
   id   Int @id @default(1)
   last Int @default(0)
 }
 
-// Ordem de Serviço
+model ReqSequence {
+  id   Int @id @default(1)
+  last Int @default(0)
+}
+
 model OS {
-  id            String    @id           // "2026-000001"
-  seq           Int                       // número puro
-  garagem       String
-  motorista     String?
-  frota         String
-  km            Int        @default(0)
-  tipoServico   String
-  descricao     String
-  status        OSStatus   @default(aberta)
+  id           String     @id
+  seq          Int
+  garagem      String
+  motorista    String?
+  frota        String
+  km           Int        @default(0)
+  tipoServico  String
+  descricao    String
+  status       OSStatus   @default(aberta)
 
-  createdBy     String?
-  createdByUser User?      @relation("UserOS", fields: [createdBy], references: [id])
+  createdBy    String?
+  createdByUser User?     @relation("UserOS", fields: [createdBy], references: [id])
 
-  openedByName  String?
-  openedAt      DateTime   @default(now())
-  createdAt     DateTime   @default(now())
-  updatedAt     DateTime   @updatedAt
+  openedByName String?
+  openedAt     DateTime   @default(now())
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
 
-  // 🔗 NOVO: todas requisições vinculadas à OS
-  requisicoes   Req[]
+  requisicoes  Req[]
 
   @@index([status])
   @@index([createdBy])
   @@index([createdAt])
 }
 
-// Requisição (admin)
 model Req {
-  id            String     @id @default(cuid())
+  id            String      @id @default(cuid())
   material      String
   quantidade    Float
   garagem       String
@@ -86,37 +79,35 @@ model Req {
   data          DateTime?
   codigo        String
   descricao     String
-  status        OSStatus   @default(aberta)
+  status        OSStatus    @default(aberta)
 
   createdBy     String?
-  createdByUser User?      @relation("UserReq", fields: [createdBy], references: [id])
+  createdByUser User?       @relation("UserReq", fields: [createdBy], references: [id])
 
-  // 🔗 NOVO: vínculo com OS (opcional para manter registros antigos)
   osId          String?
-  os            OS?        @relation(fields: [osId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+  os            OS?         @relation(fields: [osId], references: [id], onDelete: SetNull, onUpdate: Cascade)
 
-  createdAt     DateTime   @default(now())
-  updatedAt     DateTime   @updatedAt
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
 
   @@index([status])
   @@index([createdAt])
   @@index([osId])
 }
 
-// Abastecimento (admin)
 model Abastecimento {
-  id             String   @id @default(cuid())
-  dataHora       DateTime @default(now())
-  frota          String
-  kmVeiculo      Int
-  kmInicioBomba  Float
-  kmFimBomba     Float
-  litros         Float
+  id            String     @id @default(cuid())
+  dataHora      DateTime   @default(now())
+  frota         String
+  kmVeiculo     Int
+  kmInicioBomba Float
+  kmFimBomba    Float
+  litros        Float
 
-  createdBy      String?
-  createdByUser  User?    @relation("UserAbast", fields: [createdBy], references: [id])
+  createdBy     String?
+  createdByUser User?      @relation("UserAbast", fields: [createdBy], references: [id])
 
-  createdAt      DateTime @default(now())
+  createdAt     DateTime   @default(now())
 
   @@index([dataHora])
   @@index([createdAt])
