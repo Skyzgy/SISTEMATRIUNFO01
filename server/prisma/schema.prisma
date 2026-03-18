@@ -13,7 +13,9 @@ datasource db {
 enum Role {
   driver
   admin
+  mechanic
 }
+
 
 enum OSStatus {
   aberta
