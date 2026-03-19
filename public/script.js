@@ -741,48 +741,76 @@ function renderizarTabelaREQCompleta() {
   const wrap = document.getElementById("tabela-completa-req");
   if (!wrap) return;
 
-  if (!requisicoes.length) {
-    wrap.innerHTML = `<div class="empty-state">Sem registros</div>`;
-    return;
-  }
+  wrap.innerHTML = `<div class="empty-state">Carregando...</div>`;
 
-  const rows = requisicoes.map((req, idx) => `
-    <tr>
-      <td>${escapeHTML(req.id)}</td>
-      <td>${escapeHTML(req.dataBR || "")}</td>
-      <td>${escapeHTML(req.material || "")}</td>
-      <td>${escapeHTML(String(req.quantidade ?? req.unidade ?? "-"))}</td>
-      <td>${escapeHTML(req.garagem || "")}</td>
-      <td>${escapeHTML(req.frota || "")}</td>
-      <td>${escapeHTML(req.solicitante || "")}</td>
-      <td>${escapeHTML(req.codigo || "")}</td>
-      <td>${escapeHTML(req.descricao || "")}</td>
-      <td>
-        <select class="status-select" onchange="alterarStatusREQ('${req.id}', this.value, ${idx})">
-          ${STATUS.map(s => `<option value="${s}" ${normalizarStatus(req.status)===s?'selected':''}>${s}</option>`).join("")}
-        </select>
-      </td>
-      <td>
-        <button class="btn-acao" onclick="concluirREQ('${req.id}', ${idx})">Concluir</button>
-        <button class="btn-acao secondary" onclick="removerREQ('${req.id}', ${idx})">Remover</button>
-      </td>
-    </tr>
-  `).join("");
+  api("/api/req?limit=500")
+    .then(data => {
+      if (!data.items || data.items.length === 0) {
+        wrap.innerHTML = `<div class="empty-state">Sem registros</div>`;
+        return;
+      }
 
-  wrap.innerHTML = `
-    <div class="tabela-wrap">
-      <table class="tabela">
-        <thead>
+      let html = `
+        <div class="tabela-wrap">
+        <table class="tabela">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Abertura</th>
+              <th>Garagem</th>
+              <th>Frota</th>
+              <th>Material</th>
+              <th>Qtd</th>
+              <th>Solicitante</th>
+              <th>Código</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+      `;
+
+      for (const r of data.items) {
+
+        // estilo igual ao de OS
+        const statusClass =
+          r.status === "aberta" ? "status status-aberta" :
+          r.status === "andamento" ? "status status-andamento" :
+          r.status === "aguardando" ? "status status-aguardando" :
+          r.status === "concluida" ? "status status-concluida" :
+          "status";
+
+        html += `
           <tr>
-            <th>ID</th><th>Data</th><th>Material</th><th>Quantidade</th>
-            <th>Garagem</th><th>Frota</th><th>Solicitante</th>
-            <th>Código</th><th>Descrição</th><th>Status</th><th>Ações</th>
+            <td>${r.id}</td>
+            <td>${r.createdAt ? new Date(r.createdAt).toLocaleString("pt-BR") : ""}</td>
+            <td>${r.garagem || ""}</td>
+            <td>${r.frota || ""}</td>
+            <td>${r.material || ""}</td>
+            <td>${r.quantidade}</td>
+            <td>${r.solicitante || ""}</td>
+            <td>${r.codigo || ""}</td>
+
+            <td>
+              <span class="${statusClass}">
+                ${r.status}
+              </span>
+            </td>
           </tr>
-        </thead>
-        <tbody>${rows}</tbody>
-      </table>
-    </div>
-  `;
+        `;
+      }
+
+      html += `
+          </tbody>
+        </table>
+        </div>
+      `;
+
+      wrap.innerHTML = html;
+    })
+    .catch(err => {
+      console.error("[ERRO renderizarTabelaREQCompleta]", err);
+      wrap.innerHTML = `<div class="empty-state">Erro ao carregar requisições</div>`;
+    });
 }
 
 function renderizarTabelaAbastecimentoCompleta() {
