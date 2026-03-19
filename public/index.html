@@ -3,17 +3,13 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <!-- Ajuste: força o navegador a respeitar o tema escuro (melhora contraste do dashboard em alguns devices) -->
   <meta name="color-scheme" content="dark" />
   <title>Triunfo System - Gestão de Frota</title>
 
-  <!-- CSS principal do app -->
   <link rel="stylesheet" href="/style.css" />
 
-  <!-- moderno para Minhas OS / Listagem OS -->
   <link rel="stylesheet" href="/css/myos.css" />
 
-  <!-- Fallback mínimo -->
   <style>
     .hidden { display: none !important; }
   </style>
@@ -21,9 +17,7 @@
 <body>
   <div class="app-container">
 
-<!-- ============================
-     TOPBAR MOBILE
-=============================== -->
+<!-- TOPBAR MOBILE -->
 <header class="app-topbar">
   <button id="btnMobileMenu" class="btn-menu"
     aria-label="Abrir menu"
@@ -32,9 +26,7 @@
   <div class="topbar-title">Triunfo System</div>
 </header>
 
-<!-- ============================
-     SIDEBAR (AGORA COM ID="sidebar")
-=============================== -->
+<!-- SIDEBAR -->
 <nav id="sidebar" class="sidebar" aria-label="Menu principal">
   <div class="sidebar-logo">
     <img src="/logo.jpeg" alt="Triunfo" style="max-width: 100%; height: auto;" />
@@ -53,14 +45,10 @@
   <button id="btnLogout" class="btn-exit">Sair do Sistema</button>
 </nav>
 
-<!-- ============================
-     BACKDROP MOBILE (DEPOIS DO NAV)
-=============================== -->
+<!-- BACKDROP MOBILE -->
 <div id="sidebarBackdrop" class="sidebar-backdrop" hidden></div>
 
-<!-- ============================
-     MAIN CONTENT
-=============================== -->
+<!-- MAIN CONTENT -->
 <main class="main-content" id="conteudo" tabindex="-1">
 
 <!-- DASHBOARD -->
@@ -187,45 +175,10 @@
   <div id="tabela-completa-req"></div>
 </section>
 
-  </div>
-</section>
-
-<!-- LISTAGEM COMPLETA OS -->
-<section id="tela-listagem-os" class="hidden admin-only">
-  <h2>📋 HISTÓRICO COMPLETO DE OS</h2>
-  <div id="tabela-completa-os"></div>
-</section>
-
-<!-- LISTAGEM COMPLETA ABASTECIMENTOS -->
-<section id="tela-listagem-abast" class="hidden admin-only">
-  <h2>⛽ HISTÓRICO COMPLETO DE ABASTECIMENTOS</h2>
-  <div id="tabela-completa-abast"></div>
-</section>
-
-<!-- MINHAS OS -->
-<section id="tela-minhas-os" class="hidden">
-  <h2>📋 Minhas OS</h2>
-  <div id="tabela-minhas-os">Carregando...</div>
-</section>
-
-<!-- MINHAS REQUISIÇÕES -->
-<section id="tela-minhas-req" class="hidden">
-  <h2>📄 Minhas Requisições</h2>
-  <div id="tabela-listagem-req">Carregando...</div>
-</section>
-
-<!-- LISTAGEM COMPLETA REQUISIÇÕES (ABERTA APENAS POR VER TODAS) -->
-<section id="tela-listagem-req-completo" class="hidden admin-only">
-  <h2>📑 HISTÓRICO COMPLETO DE REQUISIÇÕES</h2>
-  <div id="tabela-completa-req"></div>
-</section>
-
 </main>
 </div>
 
-<!-- ============================
-     MODAIS
-=============================== -->
+<!-- MODAIS -->
 
 <!-- MODAL OS -->
 <div class="modal-overlay" id="modalOS" data-modal role="dialog" aria-modal="true" aria-labelledby="titulo-modal-os">
@@ -247,9 +200,9 @@
       </div>
 
       <div class="form-group">
-  <label for="inputMotorista">MOTORISTA</label>
-  <input type="text" id="inputMotorista" name="motorista" readonly placeholder="Carregando...">
-</div>
+        <label for="inputMotorista">MOTORISTA</label>
+        <input type="text" id="inputMotorista" name="motorista" readonly placeholder="Carregando...">
+      </div>
 
       <div class="form-group">
         <label for="selectFrota">FROTA (PREFIXO)</label>
@@ -318,9 +271,6 @@
         </select>
       </div>
 
-      <!-- =============================== -->
-      <!-- NOVO CAMPO: Vincular à OS aberta -->
-      <!-- =============================== -->
       <div class="form-group">
         <label for="selectOSReq"><strong>VINCULAR À OS (ABERTA)</strong></label>
         <select id="selectOSReq" name="osId">
@@ -412,9 +362,7 @@
   </div>
 </div>
 
-<!-- ============================
-     SCRIPTS
-=============================== -->
+<!-- SCRIPTS -->
 <script src="/script.js" defer></script>
 <script src="/js/minhas-os.js" defer></script>
 <script src="/js/admin-os.js" defer></script>

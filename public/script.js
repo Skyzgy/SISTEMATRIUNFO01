@@ -267,7 +267,7 @@ function trapFocus(modalEl, e) {
    Navegação SPA
 ========================= */
 function alternarTelas(tela) {
-  const ids = ["dashboard", "listagem-os", "minhas-req", "listagem-abast", "minhas-os"];
+  const ids = ["dashboard", "listagem-os", "minhas-req", "listagem-abast", "minhas-os", "listagem-req-completo"];
   ids.forEach(id => hideEl(document.getElementById(`tela-${id}`)));
 
   const destino = document.getElementById(`tela-${tela}`);
@@ -279,7 +279,7 @@ function alternarTelas(tela) {
   else if (tela === "dashboard") document.querySelector(".menu-items button")?.classList.add("active");
 
   if (tela === "listagem-os")    renderizarTabelaOSCompleta();
-  if (tela === "listagem-req")   renderizarTabelaREQCompleta();
+  if (tela === "listagem-req-completo")   renderizarTabelaREQCompleta();
   if (tela === "listagem-abast") renderizarTabelaAbastecimentoCompleta();
   if (tela === "minhas-req") loadMyReqHistory();
 
