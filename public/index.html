@@ -43,12 +43,11 @@
   <div class="menu-items" role="menu">
     <button class="admin-only" data-nav-target="dashboard" role="menuitem">📊 Dashboard</button>
     <button data-open-modal="os" role="menuitem">📝 Abrir OS</button>
-    <button data-nav-target="minhas-os" role="menuitem">📋 Minhas OS</button>
+    <button data-nav-target="minhas-os" role="menuitem">📋 Minhas OS</button> 
     <button class="admin-only" data-open-modal="req" role="menuitem">📦 Nova Requisição</button>
+    <button class="admin-only" data-nav-target="minhas-req" role="menuitem">📋 Minhas Requisições</button>
     <button class="admin-only" data-open-modal="abast" role="menuitem">⛽ Abastecimento</button>
     <button class="admin-only" data-nav-target="listagem-abast" role="menuitem">🧾 Histórico Abastecimentos</button>
-    <button class="admin-only" role="menuitem">🚚 Motoristas</button>
-    <button class="admin-only" role="menuitem">⚙️ Configurações</button>
   </div>
 
   <button id="btnLogout" class="btn-exit">Sair do Sistema</button>
@@ -166,9 +165,9 @@
 
   <!-- LISTAGEM COMPLETA REQUISIÇÕES -->
   <section id="tela-listagem-req" class="hidden admin-only">
-    <h2>📦 HISTÓRICO COMPLETO DE REQUISIÇÕES</h2>
-    <div id="tabela-completa-req"></div>
-  </section>
+  <h2>📑 HISTÓRICO COMPLETO DE REQUISIÇÕES</h2>
+  <div id="tabela-completa-req"></div>
+</section>
 
   <!-- LISTAGEM COMPLETA ABASTECIMENTOS -->
   <section id="tela-listagem-abast" class="hidden admin-only">
@@ -182,6 +181,12 @@
     <div id="tabela-minhas-os">Carregando...</div>
   </section>
 
+<!-- MINHAS REQUISIÇÕES -->
+<section id="tela-minhas-req" class="hidden">
+  <h2>📄 Minhas Requisições</h2>
+  <div id="tabela-listagem-req">Carregando...</div>
+</section>
+  
 </main>
 </div>
 

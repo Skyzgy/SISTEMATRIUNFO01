@@ -267,7 +267,7 @@ function trapFocus(modalEl, e) {
    Navegação SPA
 ========================= */
 function alternarTelas(tela) {
-  const ids = ["dashboard", "listagem-os", "listagem-req", "listagem-abast", "minhas-os"];
+  const ids = ["dashboard", "listagem-os", "minhas-req", "listagem-abast", "minhas-os"];
   ids.forEach(id => hideEl(document.getElementById(`tela-${id}`)));
 
   const destino = document.getElementById(`tela-${tela}`);
@@ -281,6 +281,7 @@ function alternarTelas(tela) {
   if (tela === "listagem-os")    renderizarTabelaOSCompleta();
   if (tela === "listagem-req")   renderizarTabelaREQCompleta();
   if (tela === "listagem-abast") renderizarTabelaAbastecimentoCompleta();
+  if (tela === "minhas-req") loadMyReqHistory();
 
   document.getElementById("conteudo")?.focus({ preventScroll: true });
 }
@@ -469,6 +470,69 @@ async function salvarOS() {
     alert('Erro ao abrir OS: ' + err.message);
   } finally {
     if (btn) { btn.disabled = false; btn.textContent = prev; }
+  }
+}
+
+async function loadMyReqHistory() {
+  const wrap = document.getElementById("tabela-listagem-req");
+  if (!wrap) return;
+
+  wrap.innerHTML = "Carregando...";
+
+  try {
+    const data = await api("/api/req?limit=100");
+
+    if (!data.items || data.items.length === 0) {
+      wrap.innerHTML = `<div class="empty-state">Sem requisições</div>`;
+      return;
+    }
+
+    let html = `
+      <div class="tabela-wrap">
+        <table class="tabela">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Material</th>
+              <th>Qtd</th>
+              <th>Garagem</th>
+              <th>Frota</th>
+              <th>Solicitante</th>
+              <th>Código</th>
+              <th>Status</th>
+              <th>Abertura</th>
+            </tr>
+          </thead>
+          <tbody>
+    `;
+
+    for (const r of data.items) {
+      html += `
+        <tr>
+          <td>${r.id}</td>
+          <td>${r.material}</td>
+          <td>${r.quantidade}</td>
+          <td>${r.garagem}</td>
+          <td>${r.frota}</td>
+          <td>${r.solicitante}</td>
+          <td>${r.codigo}</td>
+          <td>${r.status}</td>
+          <td>${r.createdAt ? new Date(r.createdAt).toLocaleDateString("pt-BR") : ""}</td>
+        </tr>
+      `;
+    }
+
+    html += `
+          </tbody>
+        </table>
+      </div>
+    `;
+
+    wrap.innerHTML = html;
+
+  } catch (err) {
+    console.error("[ERRO loadMyReqHistory]", err);
+    wrap.innerHTML = `<div class="empty-state">Erro ao carregar</div>`;
   }
 }
 
