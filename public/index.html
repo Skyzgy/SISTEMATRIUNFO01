@@ -63,126 +63,126 @@
 =============================== -->
 <main class="main-content" id="conteudo" tabindex="-1">
 
-  <!-- DASHBOARD -->
-  <section id="tela-dashboard" class="admin-only" aria-labelledby="titulo-dashboard">
-    <h1 id="titulo-dashboard" class="section-title">OS — STATUS</h1>
+<!-- DASHBOARD -->
+<section id="tela-dashboard" class="admin-only" aria-labelledby="titulo-dashboard">
+  <h1 id="titulo-dashboard" class="section-title">OS — STATUS</h1>
 
-    <div class="status-grid" role="list" aria-label="Status de OS">
-      <article class="status-card" role="listitem">
-        <div class="status-card-head">
-          <span class="status-label">Aberta</span>
-          <span class="status-icon status-open">📁</span>
-        </div>
-        <div class="status-value" id="os-count-aberta">0</div>
-      </article>
+  <div class="status-grid" role="list" aria-label="Status de OS">
+    <article class="status-card" role="listitem">
+      <div class="status-card-head">
+        <span class="status-label">Aberta</span>
+        <span class="status-icon status-open">📁</span>
+      </div>
+      <div class="status-value" id="os-count-aberta">0</div>
+    </article>
 
-      <article class="status-card" role="listitem">
-        <div class="status-card-head">
-          <span class="status-label">Em andamento</span>
-          <span class="status-icon status-andamento">🔧</span>
-        </div>
-        <div class="status-value" id="os-count-em-andamento">0</div>
-      </article>
+    <article class="status-card" role="listitem">
+      <div class="status-card-head">
+        <span class="status-label">Em andamento</span>
+        <span class="status-icon status-andamento">🔧</span>
+      </div>
+      <div class="status-value" id="os-count-em-andamento">0</div>
+    </article>
 
-      <article class="status-card" role="listitem">
-        <div class="status-card-head">
-          <span class="status-label">Aguardando</span>
-          <span class="status-icon status-aguardando">🕒</span>
-        </div>
-        <div class="status-value" id="os-count-aguardando">0</div>
-      </article>
+    <article class="status-card" role="listitem">
+      <div class="status-card-head">
+        <span class="status-label">Aguardando</span>
+        <span class="status-icon status-aguardando">🕒</span>
+      </div>
+      <div class="status-value" id="os-count-aguardando">0</div>
+    </article>
 
-      <article class="status-card" role="listitem">
-        <div class="status-card-head">
-          <span class="status-label">Concluída</span>
-          <span class="status-icon status-concluida">✅</span>
-        </div>
-        <div class="status-value" id="os-count-concluida">0</div>
-      </article>
-    </div>
+    <article class="status-card" role="listitem">
+      <div class="status-card-head">
+        <span class="status-label">Concluída</span>
+        <span class="status-icon status-concluida">✅</span>
+      </div>
+      <div class="status-value" id="os-count-concluida">0</div>
+    </article>
+  </div>
 
-    <h2 class="section-title admin-only">REQUISIÇÕES — STATUS</h2>
-    <div class="status-grid admin-only">
-      <article class="status-card">
-        <div class="status-card-head">
-          <span class="status-label">Aberta</span>
-          <span class="status-icon status-open">📁</span>
-        </div>
-        <div class="status-value" id="req-count-aberta">0</div>
-      </article>
+  <h2 class="section-title admin-only">REQUISIÇÕES — STATUS</h2>
+  <div class="status-grid admin-only">
+    <article class="status-card">
+      <div class="status-card-head">
+        <span class="status-label">Aberta</span>
+        <span class="status-icon status-open">📁</span>
+      </div>
+      <div class="status-value" id="req-count-aberta">0</div>
+    </article>
 
-      <article class="status-card">
-        <div class="status-card-head">
-          <span class="status-label">Em andamento</span>
-          <span class="status-icon status-andamento">🔧</span>
-        </div>
-        <div class="status-value" id="req-count-em-andamento">0</div>
-      </article>
+    <article class="status-card">
+      <div class="status-card-head">
+        <span class="status-label">Em andamento</span>
+        <span class="status-icon status-andamento">🔧</span>
+      </div>
+      <div class="status-value" id="req-count-em-andamento">0</div>
+    </article>
 
-      <article class="status-card">
-        <div class="status-card-head">
-          <span class="status-label">Aguardando</span>
-          <span class="status-icon status-aguardando">🕒</span>
-        </div>
-        <div class="status-value" id="req-count-aguardando">0</div>
-      </article>
+    <article class="status-card">
+      <div class="status-card-head">
+        <span class="status-label">Aguardando</span>
+        <span class="status-icon status-aguardando">🕒</span>
+      </div>
+      <div class="status-value" id="req-count-aguardando">0</div>
+    </article>
 
-      <article class="status-card">
-        <div class="status-card-head">
-          <span class="status-label">Concluída</span>
-          <span class="status-icon status-concluida">✅</span>
-        </div>
-        <div class="status-value" id="req-count-concluida">0</div>
-      </article>
-    </div>
+    <article class="status-card">
+      <div class="status-card-head">
+        <span class="status-label">Concluída</span>
+        <span class="status-icon status-concluida">✅</span>
+      </div>
+      <div class="status-value" id="req-count-concluida">0</div>
+    </article>
+  </div>
 
-    <div class="resumo-container">
+  <div class="resumo-container">
 
-      <section class="card-largo">
-        <div class="card-largo-header">
-          <div class="title-wrap">📋 ÚLTIMAS OS</div>
-          <button class="link-ver-todas link-ver-todas--plain admin-only" data-nav-target="listagem-os">Ver todas</button>
-        </div>
-        <div id="lista-vazia">Sem registros</div>
-      </section>
+    <section class="card-largo">
+      <div class="card-largo-header">
+        <div class="title-wrap">📋 ÚLTIMAS OS</div>
+        <button class="link-ver-todas link-ver-todas--plain admin-only" data-nav-target="listagem-os">Ver todas</button>
+      </div>
+      <div id="lista-vazia">Sem registros</div>
+    </section>
 
-      <section class="card-largo admin-only">
-        <div class="card-largo-header">
-          <div class="title-wrap">📦 ÚLTIMAS REQUISIÇÕES</div>
-          <button class="link-ver-todas link-ver-todas--plain" data-nav-target="listagem-req">Ver todas</button>
-        </div>
-        <div id="lista-requisicoes">Sem registros</div>
-      </section>
+    <section class="card-largo admin-only">
+      <div class="card-largo-header">
+        <div class="title-wrap">📦 ÚLTIMAS REQUISIÇÕES</div>
+        <button class="link-ver-todas link-ver-todas--plain admin-only" data-nav-target="listagem-req">
+      </div>
+      <div id="lista-requisicoes">Sem registros</div>
+    </section>
 
-    </div>
-  </section>
+  </div>
+</section>
 
-  <!-- LISTAGEM COMPLETA OS -->
-  <section id="tela-listagem-os" class="hidden admin-only">
-    <h2>📋 HISTÓRICO COMPLETO DE OS</h2>
-    <div id="tabela-completa-os"></div>
-  </section>
+<!-- LISTAGEM COMPLETA OS -->
+<section id="tela-listagem-os" class="hidden admin-only">
+  <h2>📋 HISTÓRICO COMPLETO DE OS</h2>
+  <div id="tabela-completa-os"></div>
+</section>
 
-  <!-- LISTAGEM COMPLETA ABASTECIMENTOS -->
-  <section id="tela-listagem-abast" class="hidden admin-only">
-    <h2>⛽ HISTÓRICO COMPLETO DE ABASTECIMENTOS</h2>
-    <div id="tabela-completa-abast"></div>
-  </section>
+<!-- LISTAGEM COMPLETA ABASTECIMENTOS -->
+<section id="tela-listagem-abast" class="hidden admin-only">
+  <h2>⛽ HISTÓRICO COMPLETO DE ABASTECIMENTOS</h2>
+  <div id="tabela-completa-abast"></div>
+</section>
 
-  <!-- MINHAS OS -->
-  <section id="tela-minhas-os" class="hidden">
-    <h2>📋 Minhas OS</h2>
-    <div id="tabela-minhas-os">Carregando...</div>
-  </section>
+<!-- MINHAS OS -->
+<section id="tela-minhas-os" class="hidden">
+  <h2>📋 Minhas OS</h2>
+  <div id="tabela-minhas-os">Carregando...</div>
+</section>
 
 <!-- MINHAS REQUISIÇÕES -->
 <section id="tela-minhas-req" class="hidden">
   <h2>📄 Minhas Requisições</h2>
   <div id="tabela-listagem-req">Carregando...</div>
 </section>
-  
-<!-- LISTAGEM COMPLETA REQUISIÇÕES -->
-  <section id="tela-listagem-req" class="hidden admin-only">
+
+<!-- LISTAGEM COMPLETA REQUISIÇÕES (ADMIN ONLY) -->
+<section id="tela-listagem-req" class="hidden admin-only">
   <h2>📑 HISTÓRICO COMPLETO DE REQUISIÇÕES</h2>
   <div id="tabela-completa-req"></div>
 </section>
