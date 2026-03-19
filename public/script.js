@@ -6,7 +6,7 @@
    - Navegação SPA
    - Tabelas (legado localStorage, mantidas)
    - API helpers + Dashboard (via /summary)
-   - Tela inicial por perfil (driver → ‘minhas-os’; admin → ‘dashboard’)
+   - Tela inicial por perfil (driver → 'minhas-os'; admin → 'dashboard')
    - Logout
    - Mobile menu (☰) – abrir/fechar sidebar no celular
    ========================================================= */
@@ -67,7 +67,7 @@ const solicitantesPorGaragem = {
 };
 
 /* =========================
-   Persistência (localStorage) – legado p/ “Ver todos”
+   Persistência (localStorage) – legado p/ "Ver todos"
 ========================= */
 const STORAGE_KEYS = { OS: "triunfo_os", REQ: "triunfo_req", ABAST: "triunfo_abast" };
 let ordensServico   = carregarLista(STORAGE_KEYS.OS);
@@ -425,7 +425,6 @@ async function popularSelectOSReq() {
     selOS.innerHTML = `<option value="">Erro ao carregar OS</option>`;
   }
 }
-``
 
 /* =========================
    Salvar OS/REQ/ABAST – via API
@@ -745,72 +744,231 @@ function renderizarTabelaREQCompleta() {
 
   api("/api/req?limit=500")
     .then(data => {
+      if (!wrap) return;
+
       if (!data.items || data.items.length === 0) {
         wrap.innerHTML = `<div class="empty-state">Sem registros</div>`;
         return;
       }
 
-      let html = `
-        <div class="tabela-wrap">
-        <table class="tabela">
-          <thead>
-            <tr>
-              <th>ID</th>
-              <th>Abertura</th>
-              <th>Garagem</th>
-              <th>Frota</th>
-              <th>Material</th>
-              <th>Qtd</th>
-              <th>Solicitante</th>
-              <th>Código</th>
-              <th>Status</th>
-            </tr>
-          </thead>
-          <tbody>
-      `;
+      // Limpar e adicionar filtros
+      const html_filtros = `
+        <div style="margin-bottom: 20px; display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
+          <label style="display: flex; align-items: center; gap: 5px;">
+            Status:
+            <select id="filtro-req-status" style="padding: 5px 10px; border-radius: 4px; border: 1px solid #ccc;">
+              <option value="">Todos</option>
+              <option value="aberta">Aberta</option>
+              <option value="andamento">Em Andamento</option>
+              <option value="aguardando">Aguardando</option>
+              <option value="concluida">Concluída</option>
+            </select>
+          </label>
 
-      for (const r of data.items) {
+          <label style="display: flex; align-items: center; gap: 5px;">
+            Buscar:
+            <input type="text" id="busca-req-completo" placeholder="ID, material, frota..." 
+              style="padding: 5px 10px; border-radius: 4px; border: 1px solid #ccc; width: 300px;">
+          </label>
 
-        // estilo igual ao de OS
-        const statusClass =
-          r.status === "aberta" ? "status status-aberta" :
-          r.status === "andamento" ? "status status-andamento" :
-          r.status === "aguardando" ? "status status-aguardando" :
-          r.status === "concluida" ? "status status-concluida" :
-          "status";
+          <label style="display: flex; align-items: center; gap: 5px;">
+            Por página:
+            <input type="number" id="pag-size-req" value="10" min="5" max="100"
+              style="padding: 5px 10px; border-radius: 4px; border: 1px solid #ccc; width: 60px;">
+          </label>
 
-        html += `
-          <tr>
-            <td>${r.id}</td>
-            <td>${r.createdAt ? new Date(r.createdAt).toLocaleString("pt-BR") : ""}</td>
-            <td>${r.garagem || ""}</td>
-            <td>${r.frota || ""}</td>
-            <td>${r.material || ""}</td>
-            <td>${r.quantidade}</td>
-            <td>${r.solicitante || ""}</td>
-            <td>${r.codigo || ""}</td>
-
-            <td>
-              <span class="${statusClass}">
-                ${r.status}
-              </span>
-            </td>
-          </tr>
-        `;
-      }
-
-      html += `
-          </tbody>
-        </table>
+          <span style="margin-left: auto; font-size: 14px; color: #999;">
+            Total: <strong id="total-req-count">0</strong> registros
+          </span>
         </div>
       `;
 
-      wrap.innerHTML = html;
+      wrap.innerHTML = html_filtros;
+
+      // Renderizar tabela inicial
+      renderizarTabelaREQCompletoFiltrada(data.items);
+
+      // Eventos de filtro
+      document.getElementById("filtro-req-status")?.addEventListener("change", () => {
+        renderizarTabelaREQCompletoFiltrada(data.items);
+      });
+
+      document.getElementById("busca-req-completo")?.addEventListener("input", () => {
+        renderizarTabelaREQCompletoFiltrada(data.items);
+      });
+
+      document.getElementById("pag-size-req")?.addEventListener("change", () => {
+        renderizarTabelaREQCompletoFiltrada(data.items);
+      });
+
+      // Atualizar total
+      document.getElementById("total-req-count").textContent = data.items.length;
     })
     .catch(err => {
       console.error("[ERRO renderizarTabelaREQCompleta]", err);
       wrap.innerHTML = `<div class="empty-state">Erro ao carregar requisições</div>`;
     });
+}
+
+function renderizarTabelaREQCompletoFiltrada(items) {
+  const wrap = document.getElementById("tabela-completa-req");
+  if (!wrap) return;
+
+  const containerDiv = wrap.querySelector(".container-tabela-req") || document.createElement("div");
+  containerDiv.className = "container-tabela-req";
+
+  const statusFiltro = document.getElementById("filtro-req-status")?.value || "";
+  const buscaFiltro = document.getElementById("busca-req-completo")?.value || "";
+  const porPagina = parseInt(document.getElementById("pag-size-req")?.value || "10");
+
+  // Filtrar por status
+  let listaFiltrada = items;
+  if (statusFiltro) {
+    listaFiltrada = listaFiltrada.filter(r => r.status === statusFiltro);
+  }
+
+  // Filtrar por busca
+  if (buscaFiltro) {
+    const termo = norm(buscaFiltro);
+    listaFiltrada = listaFiltrada.filter(r => {
+      const campos = [r.id, r.material, r.frota, r.garagem, r.codigo, r.solicitante];
+      return campos.some(v => norm(v).includes(termo));
+    });
+  }
+
+  if (!listaFiltrada.length) {
+    containerDiv.innerHTML = `<div class="empty-state">Sem registros</div>`;
+    if (!wrap.querySelector(".container-tabela-req")) wrap.appendChild(containerDiv);
+    return;
+  }
+
+  // Paginação
+  const totalPaginas = Math.ceil(listaFiltrada.length / porPagina);
+  let paginaAtual = parseInt(sessionStorage.getItem("pag-req-atual") || "1");
+  if (paginaAtual > totalPaginas) paginaAtual = 1;
+  sessionStorage.setItem("pag-req-atual", paginaAtual);
+
+  const inicio = (paginaAtual - 1) * porPagina;
+  const fim = inicio + porPagina;
+  const itemsPage = listaFiltrada.slice(inicio, fim);
+
+  const rows = itemsPage.map((r, idx) => {
+    const statusClass =
+      r.status === "aberta" ? "status status-aberta" :
+      r.status === "andamento" ? "status status-andamento" :
+      r.status === "aguardando" ? "status status-aguardando" :
+      r.status === "concluida" ? "status status-concluida" :
+      "status";
+
+    return `
+      <tr>
+        <td>${r.id}</td>
+        <td>${r.createdAt ? new Date(r.createdAt).toLocaleString("pt-BR") : ""}</td>
+        <td>${r.material || ""}</td>
+        <td>${r.quantidade}</td>
+        <td>${r.garagem || ""}</td>
+        <td>${r.frota || ""}</td>
+        <td>${r.solicitante || ""}</td>
+        <td>${r.codigo || ""}</td>
+        <td>
+          <select class="status-select" onchange="alterarStatusReqAPI('${r.id}', this.value)">
+            <option value="aberta" ${r.status === "aberta" ? "selected" : ""}>Aberta</option>
+            <option value="andamento" ${r.status === "andamento" ? "selected" : ""}>Em Andamento</option>
+            <option value="aguardando" ${r.status === "aguardando" ? "selected" : ""}>Aguardando</option>
+            <option value="concluida" ${r.status === "concluida" ? "selected" : ""}>Concluída</option>
+          </select>
+        </td>
+        <td>
+          <button class="btn-acao" onclick="concluirReqAPI('${r.id}')">Concluir</button>
+          <button class="btn-acao secondary" onclick="removerReqAPI('${r.id}')">Remover</button>
+        </td>
+      </tr>
+    `;
+  }).join("");
+
+  const htmlTable = `
+    <div class="tabela-wrap">
+      <table class="tabela">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Abertura</th>
+            <th>Material</th>
+            <th>Qtd</th>
+            <th>Garagem</th>
+            <th>Frota</th>
+            <th>Solicitante</th>
+            <th>Código</th>
+            <th>Status</th>
+            <th>Ação</th>
+          </tr>
+        </thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>
+
+    <div style="margin-top: 20px; display: flex; gap: 10px; justify-content: center; align-items: center;">
+      <button onclick="mudarPaginaReq(-1)" class="btn-acao" ${paginaAtual === 1 ? "disabled" : ""}>← Anterior</button>
+      <span style="color: #999;">Página ${paginaAtual} de ${totalPaginas}</span>
+      <button onclick="mudarPaginaReq(1)" class="btn-acao" ${paginaAtual === totalPaginas ? "disabled" : ""}>Próxima →</button>
+    </div>
+  `;
+
+  const oldTable = wrap.querySelector(".tabela-wrap");
+  if (oldTable) {
+    oldTable.parentElement.innerHTML = htmlTable;
+  } else {
+    containerDiv.innerHTML = htmlTable;
+    wrap.appendChild(containerDiv);
+  }
+}
+
+function mudarPaginaReq(direcao) {
+  let paginaAtual = parseInt(sessionStorage.getItem("pag-req-atual") || "1");
+  paginaAtual += direcao;
+  sessionStorage.setItem("pag-req-atual", paginaAtual);
+  
+  api("/api/req?limit=500").then(data => {
+    renderizarTabelaREQCompletoFiltrada(data.items || []);
+  }).catch(err => {
+    console.error("[ERRO mudarPaginaReq]", err);
+  });
+}
+
+async function alterarStatusReqAPI(id, novoStatus) {
+  try {
+    await api(`/api/req/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify({ status: novoStatus })
+    });
+    
+    // Recarregar tabela
+    api("/api/req?limit=500").then(data => {
+      renderizarTabelaREQCompletoFiltrada(data.items || []);
+    });
+  } catch (err) {
+    alert("Erro ao alterar status: " + err.message);
+  }
+}
+
+async function concluirReqAPI(id) {
+  await alterarStatusReqAPI(id, "concluida");
+}
+
+async function removerReqAPI(id) {
+  if (!confirm("Remover esta requisição? Esta ação não pode ser desfeita.")) return;
+  
+  try {
+    await api(`/api/req/${id}`, { method: "DELETE" });
+    alert("Requisição removida com sucesso!");
+    
+    // Recarregar tabela
+    api("/api/req?limit=500").then(data => {
+      renderizarTabelaREQCompletoFiltrada(data.items || []);
+    });
+  } catch (err) {
+    alert("Erro ao remover: " + err.message);
+  }
 }
 
 function renderizarTabelaAbastecimentoCompleta() {
@@ -921,7 +1079,7 @@ function removerAbastecimento(id, indexFallback = -1) {
 }
 
 /* =========================
-   BUSCA nas telas “Ver todos” (LEGADO)
+   BUSCA nas telas "Ver todos" (LEGADO)
 ========================= */
 const BUSCA_STATE = { os: "", req: "", abast: "" };
 function norm(s) {
@@ -1083,329 +1241,4 @@ function renderizarTabelaAbastecimentoFiltrada() {
         <thead>
           <tr>
             <th>ID</th><th>Data/Hora</th><th>Frota</th><th>Placa</th><th>Garagem</th>
-            <th>KM Veículo</th><th>KM Bomba (Ini)</th><th>KM Bomba (Fim)</th><th>Quantidade (L)</th><th>Ações</th>
-          </tr>
-        </thead>
-        <tbody>${rows}</tbody>
-      </table>
-    </div>
-  `;
-}
-
-/* ---- Liga inputs de busca ---- */
-document.addEventListener("DOMContentLoaded", () => {
-  const iOS    = document.getElementById("busca-os");
-  const iREQ   = document.getElementById("busca-req");
-  const iABAST = document.getElementById("busca-abast");
-
-  if (iOS)  iOS.addEventListener("input", () => { BUSCA_STATE.os = iOS.value; renderizarTabelaOSFiltrada(); });
-  if (iREQ) iREQ.addEventListener("input", () => { BUSCA_STATE.req = iREQ.value; renderizarTabelaREQFiltrada(); });
-  if (iABAST) iABAST.addEventListener("input", () => { BUSCA_STATE.abast = iABAST.value; renderizarTabelaAbastecimentoFiltrada(); });
-});
-
-/* =========================
-   Event wiring + Inicialização
-========================= */
-document.addEventListener("DOMContentLoaded", async () => {
-  // Nav por data-nav-target
-  document.querySelectorAll("[data-nav-target]").forEach(btn => {
-    btn.addEventListener("click", () => alternarTelas(btn.dataset.navTarget));
-  });
-
-  // Abrir modais
-  document.querySelectorAll("[data-open-modal]").forEach(btn => {
-    btn.addEventListener("click", () => {
-      const tipo = btn.dataset.openModal;
-      if (tipo === "os")    abrirModal();
-      if (tipo === "req")   abrirModalRequisicao();
-      if (tipo === "abast") abrirModalAbastecimento();
-    });
-  });
-
-  // Fechar modais
-  document.querySelectorAll("[data-close-modal]").forEach(btn => {
-    btn.addEventListener("click", () => {
-      const modal = btn.closest(".modal-overlay");
-      if (!modal) return;
-      if (modal.id === "modalOS")             fecharModal();
-      if (modal.id === "modalRequisicao")     fecharModalRequisicao();
-      if (modal.id === "modalAbastecimento")  fecharModalAbastecimento();
-    });
-  });
-
-  // Clique fora fecha modais
-  document.addEventListener("click", (e) => {
-    const mOS  = document.getElementById("modalOS");
-    const mRQ  = document.getElementById("modalRequisicao");
-    const mAB  = document.getElementById("modalAbastecimento");
-    if (e.target === mOS) fecharModal();
-    if (e.target === mRQ) fecharModalRequisicao();
-    if (e.target === mAB) fecharModalAbastecimento();
-  });
-
-  // ESC fecha modais
-  document.addEventListener("keydown", (e) => {
-    if (e.key !== "Escape") return;
-    if (document.getElementById("modalOS")?.classList.contains("active"))            fecharModal();
-    if (document.getElementById("modalRequisicao")?.classList.contains("active"))    fecharModalRequisicao();
-    if (document.getElementById("modalAbastecimento")?.classList.contains("active")) fecharModalAbastecimento();
-  });
-
-  // Trap de foco
-  ["modalOS", "modalRequisicao", "modalAbastecimento"].forEach(id => {
-    const modal = document.getElementById(id);
-    if (!modal) return;
-    modal.addEventListener("keydown", (e) => { if (e.key === "Tab") trapFocus(modal, e); });
-  });
-
-  // Submits via Enter nas modais
-  document.getElementById("modalOS")?.addEventListener("keydown", (e) => {
-    if (e.key === "Enter") {
-      const tag = document.activeElement?.tagName?.toLowerCase();
-      if (tag === "textarea" || tag === "select") return;
-      salvarOS();
-    }
-  });
-  document.getElementById("modalRequisicao")?.addEventListener("keydown", (e) => {
-    if (e.key === "Enter") {
-      const tag = document.activeElement?.tagName?.toLowerCase();
-      if (tag === "textarea" || tag === "select") return;
-      salvarRequisicao();
-    }
-  });
-  document.getElementById("modalAbastecimento")?.addEventListener("keydown", (e) => {
-    if (e.key === "Enter") {
-      const tag = document.activeElement?.tagName?.toLowerCase();
-      if (tag === "textarea" || tag === "select") return;
-      salvarAbastecimento();
-    }
-  });
-
-  // Dependentes de garagem
-  document.getElementById("selectGaragem")?.addEventListener("change", atualizarCamposPorGaragem);
-  
-  document.getElementById("selectGaragemReq")?.addEventListener("change", async () => {
-  atualizarCamposReqPorGaragem();
-  try { await popularSelectOSReq(); } catch {}
-});
-
-document.getElementById("selectFrotaReq")?.addEventListener("change", async () => {
-  try { await popularSelectOSReq(); } catch {}
-});
-
-  // Botões submit
-  document.querySelector("[data-submit-os]")?.addEventListener("click", salvarOS);
-  document.querySelector("[data-submit-req]")?.addEventListener("click", salvarRequisicao);
-  document.querySelector("[data-submit-abast]")?.addEventListener("click", salvarAbastecimento);
-
-  // Migração leve (legado localStorage)
-  let migrated = false;
-  ordensServico = (ordensServico || []).map((o) => {
-    const n = { ...o };
-    if (!n.id) { n.id = gerarId("OS"); migrated = true; }
-    n.status = normalizarStatus(n.status);
-    if (!n.dataBR && n.data) { try { n.dataBR = formatarDataBR(new Date(n.data)); } catch {} }
-    return n;
-  });
-  requisicoes = (requisicoes || []).map((r) => {
-    const n = { ...r };
-    if (!n.id) { n.id = gerarId("REQ"); migrated = true; }
-    n.status = normalizarStatus(n.status);
-    if (n.unidade && !n.quantidade) {
-      const num = Number(String(n.unidade).replace(",", "."));
-      if (!Number.isNaN(num) && num > 0) n.quantidade = num;
-    }
-    return n;
-  });
-  if (migrated) {
-    salvarLista(STORAGE_KEYS.OS, ordensServico);
-    salvarLista(STORAGE_KEYS.REQ, requisicoes);
-  }
-
-  // Selects iniciais
-  popularSelect("selectGaragem", bancoDeDados.garagens, "Escolha uma garagem...");
-  popularTipoServico();
-  popularSelectsRequisicao();
-
-  const inputDataReq = document.getElementById("inputDataReq");
-  if (inputDataReq && !inputDataReq.value) inputDataReq.value = toISODateString(new Date());
-
-  // Popular Frota no Abastecimento
-  (function popularSelectFrotaAbastecimento() {
-    const s = document.getElementById("selectFrotaAbast");
-    if (!s) return;
-    const frotas = obterFrotasCombinadas();
-    s.innerHTML = `<option value="">Selecione...</option>` +
-      frotas.map(f => `<option value="${f.prefixo}">${f.prefixo} • ${f.placa} • ${f.garagem}</option>`).join("");
-  })();
-
-  /* ======== TELA INICIAL POR PERFIL ======== */
-  try {
-    const me = await api('/api/auth/me');       // exige sessão
-    const role = me?.user?.role;
-
-    if (role === 'driver') {
-      // Esconde tudo de admin
-      document.querySelectorAll('.admin-only').forEach(el => {
-        el.style.display = 'none';
-        el.setAttribute('aria-hidden','true');
-      });
-      // Vai direto para “Minhas OS”
-      alternarTelas('minhas-os');
-
-      // Carrega a seção
-      if (typeof loadMyOsHistory === 'function') {
-        try { await loadMyOsHistory(); } catch(e) {}
-      }
-    } else {
-      // Admin → Dashboard
-      alternarTelas('dashboard');
-      try { await atualizarDashboard(); } catch(e) {}
-    }
-  } catch (e) {
-    // Sem sessão: fluxo normal leva para /auth
-  }
-});
-
-/* =========================
-   API CONFIG + HELPERS
-========================= */
-// MESMO host (Railway serve front + API)
-const API_URL = ''; // se front for separado, aponte para a URL do backend
-
-async function api(path, options = {}) {
-  const res = await fetch(`${API_URL}${path}`, {
-    headers: { 'Content-Type': 'application/json' },
-    credentials: 'include',
-    ...options
-  });
-  let data = {};
-  try { data = await res.json(); } catch {}
-  if (!res.ok) throw new Error(data?.error || `Erro HTTP ${res.status}`);
-  return data;
-}
-
-async function loadDashboard() {
-  try {
-    const summary = await api('/api/dashboard/summary');
-
-    const osCounts = summary?.os?.counts || {};
-    setText('os-count-aberta',       osCounts.aberta    || 0);
-    setText('os-count-em-andamento', osCounts.andamento || 0);
-    setText('os-count-aguardando',   osCounts.aguardando|| 0);
-    setText('os-count-concluida',    osCounts.concluida || 0);
-
-    const ultimasOSBox = document.getElementById('lista-vazia');
-    if (ultimasOSBox) {
-      const items = summary?.os?.recent || [];
-      if (!items.length) {
-        ultimasOSBox.textContent = 'Sem registros';
-      } else {
-        ultimasOSBox.innerHTML = '';
-        const ul = document.createElement('ul');
-        ul.style.margin = '0'; ul.style.paddingLeft = '16px';
-        items.forEach(r => {
-          const li = document.createElement('li');
-          li.textContent = `${r.id} — ${r.frota || '-'} — ${r.status}`;
-          ul.appendChild(li);
-        });
-        ultimasOSBox.appendChild(ul);
-      }
-    }
-
-    const reqCounts = summary?.req?.counts;
-    if (reqCounts) {
-      setText('req-count-aberta',       reqCounts.aberta    || 0);
-      setText('req-count-em-andamento', reqCounts.andamento || 0);
-      setText('req-count-aguardando',   reqCounts.aguardando|| 0);
-      setText('req-count-concluida',    reqCounts.concluida || 0);
-
-      const ultimasReqBox = document.getElementById('lista-requisicoes');
-      if (ultimasReqBox) {
-        const items = summary?.req?.recent || [];
-        if (!items.length) {
-          ultimasReqBox.textContent = 'Sem registros';
-        } else {
-          ultimasReqBox.innerHTML = '';
-          const ul = document.createElement('ul');
-          ul.style.margin = '0'; ul.style.paddingLeft = '16px';
-          items.forEach(r => {
-            const li = document.createElement('li');
-            li.textContent = `${r.id} — ${r.material || '-'} — ${r.status}`;
-            ul.appendChild(li);
-          });
-          ultimasReqBox.appendChild(ul);
-        }
-      }
-    }
-  } catch (err) {
-    console.error('[loadDashboard] erro:', err.message);
-  }
-}
-
-/* =========================
-   LOGOUT
-========================= */
-document.addEventListener('DOMContentLoaded', () => {
-  const btnLogout = document.getElementById('btnLogout');
-  if (!btnLogout) return;
-
-  if (btnLogout.dataset.wired === '1') return;
-  btnLogout.dataset.wired = '1';
-
-  btnLogout.addEventListener('click', async (ev) => {
-    ev.preventDefault();
-    btnLogout.disabled = true;
-    const prev = btnLogout.textContent;
-    btnLogout.textContent = 'Saindo...';
-
-    try {
-      await api('/api/auth/logout', { method: 'POST', body: JSON.stringify({}) });
-      window.location.href = '/auth';
-    } catch (err) {
-      console.error('[logout] erro:', err);
-      alert('Não foi possível sair agora. Tente novamente.');
-      btnLogout.disabled = false;
-      btnLogout.textContent = prev;
-    }
-  });
-});
-
-/* =========================
-   MOBILE MENU (☰) – abrir/fechar sidebar
-========================= */
-document.addEventListener('DOMContentLoaded', () => {
-  const btn = document.getElementById('btnMobileMenu');
-  const backdrop = document.getElementById('sidebarBackdrop');
-
-  if (!btn || !backdrop) return;
-
-  const openMenu = () => {
-    document.body.classList.add('sidebar-open');
-    backdrop.hidden = false;
-    btn.setAttribute('aria-expanded', 'true');
-  };
-  const closeMenu = () => {
-    document.body.classList.remove('sidebar-open');
-    backdrop.hidden = true;
-    btn.setAttribute('aria-expanded', 'false');
-  };
-
-  btn.addEventListener('click', () => {
-    const isOpen = document.body.classList.contains('sidebar-open');
-    isOpen ? closeMenu() : openMenu();
-  });
-  backdrop.addEventListener('click', closeMenu);
-
-  // Fecha ao navegar no menu (apenas no mobile)
-  document.querySelector('.menu-items')?.addEventListener('click', (ev) => {
-    const item = ev.target.closest('button,[role="menuitem"]');
-    if (!item) return;
-    if (window.matchMedia('(max-width: 1024px)').matches) closeMenu();
-  });
-
-  // Se voltar para desktop, garante fechado
-  window.addEventListener('resize', () => {
-    if (!window.matchMedia('(max-width: 1024px)').matches) closeMenu();
-  });
-});
+           <th>KM Veículo</th><th>KM Bomba (Ini)</th><th>KM Bomba (Fim)</th><th>Quantidade (L)</th><th>Ações</th>
