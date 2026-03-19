@@ -737,121 +737,109 @@ function renderizarTabelaOSCompleta() {
   `;
 }
 
-function renderizarTabelaREQCompleta() {
+function renderizarTabelaREQCompletaComFiltros() {
   const wrap = document.getElementById("tabela-completa-req");
   if (!wrap) return;
 
-  wrap.innerHTML = `<div class="empty-state">Carregando...</div>`;
+  let listaFinal = estadoRequisicoesFiltro.dados;
 
-  api("/api/req?limit=500")
-    .then(data => {
-      if (!data.items || data.items.length === 0) {
-        wrap.innerHTML = `<div class="empty-state">Sem registros</div>`;
-        return;
-      }
-
-      let html = `
-        <div class="tabela-wrap">
-        <table class="tabela">
-          <thead>
-            <tr>
-              <th>ID</th>
-              <th>Abertura</th>
-              <th>Garagem</th>
-              <th>Frota</th>
-              <th>Material</th>
-              <th>Qtd</th>
-              <th>Solicitante</th>
-              <th>Código</th>
-              <th>Status</th>
-            </tr>
-          </thead>
-          <tbody>
-      `;
-
-      for (const r of data.items) {
-
-        // estilo igual ao de OS
-        const statusClass =
-          r.status === "aberta" ? "status status-aberta" :
-          r.status === "andamento" ? "status status-andamento" :
-          r.status === "aguardando" ? "status status-aguardando" :
-          r.status === "concluida" ? "status status-concluida" :
-          "status";
-
-        html += `
-          <tr>
-            <td>${r.id}</td>
-            <td>${r.createdAt ? new Date(r.createdAt).toLocaleString("pt-BR") : ""}</td>
-            <td>${r.garagem || ""}</td>
-            <td>${r.frota || ""}</td>
-            <td>${r.material || ""}</td>
-            <td>${r.quantidade}</td>
-            <td>${r.solicitante || ""}</td>
-            <td>${r.codigo || ""}</td>
-
-            <td>
-              <span class="${statusClass}">
-                ${r.status}
-              </span>
-            </td>
-          </tr>
-        `;
-      }
-
-      html += `
-          </tbody>
-        </table>
-        </div>
-      `;
-
-      wrap.innerHTML = html;
-    })
-    .catch(err => {
-      console.error("[ERRO renderizarTabelaREQCompleta]", err);
-      wrap.innerHTML = `<div class="empty-state">Erro ao carregar requisições</div>`;
+  // BUSCA
+  if (estadoRequisicoesFiltro.busca) {
+    const termo = normalizarBuscaReq(estadoRequisicoesFiltro.busca);
+    listaFinal = listaFinal.filter(r => {
+      const campos = [
+        r.id, r.material || '', r.frota || '', r.garagem || '',
+        r.codigo || '', r.solicitante || ''
+      ];
+      return campos.some(v => normalizarBuscaReq(String(v)).includes(termo));
     });
-}
+  }
 
-function renderizarTabelaAbastecimentoCompleta() {
-  const wrap = document.getElementById("tabela-completa-abast");
-  if (!wrap) return;
-
-  if (!abastecimentos.length) {
-    wrap.innerHTML = `<div class="empty-state">Sem registros</div>`;
+  // VAZIO
+  if (!listaFinal.length) {
+    wrap.innerHTML = `<div class="empty-state">Sem requisições encontradas</div>`;
+    document.getElementById("total-req-count-completo").textContent = "0";
     return;
   }
 
-  const rows = abastecimentos.map((a, idx) => `
-    <tr>
-      <td>${escapeHTML(a.id)}</td>
-      <td>${escapeHTML(a.dataBR || "")}</td>
-      <td>${escapeHTML(a.frota || "")}</td>
-      <td>${escapeHTML(a.placa || "")}</td>
-      <td>${escapeHTML(a.garagem || "")}</td>
-      <td>${escapeHTML(String(a.kmVeiculo))}</td>
-      <td>${escapeHTML(String(a.kmBombaIni))}</td>
-      <td>${escapeHTML(String(a.kmBombaFim))}</td>
-      <td>${escapeHTML(String((Number(a.quantidade)||0).toFixed(3)))} L</td>
-      <td>
-        <button class="btn-acao secondary" onclick="removerAbastecimento('${a.id}', ${idx})">Remover</button>
-      </td>
-    </tr>
-  `).join("");
-
-  wrap.innerHTML = `
-    <div class="tabela-wrap">
-      <table class="tabela">
-        <thead>
-          <tr>
-            <th>ID</th><th>Data/Hora</th><th>Frota</th><th>Placa</th><th>Garagem</th>
-            <th>KM Veículo</th><th>KM Bomba (Ini)</th><th>KM Bomba (Fim)</th><th>Quantidade (L)</th><th>Ações</th>
-          </tr>
-        </thead>
-        <tbody>${rows}</tbody>
-      </table>
-    </div>
+  // TABELA MYOS
+  let html = `
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>Abertura</th>
+        <th>Garagem</th>
+        <th>Frota</th>
+        <th>Material</th>
+        <th>Qtd</th>
+        <th>Solicitante</th>
+        <th>Código</th>
+        <th>Status</th>
+        <th>Ação</th>
+      </tr>
+    </thead>
+    <tbody>
   `;
+
+  for (const r of listaFinal) {
+    const dataAbertura = r.createdAt
+      ? new Date(r.createdAt).toLocaleString("pt-BR")
+      : "";
+
+    // PÍLULA DE STATUS (igual OS)
+    const statusPill = `
+  <span class="pill ${
+    r.status === "aberta" ? "open" :
+    r.status === "andamento" ? "working" :
+    r.status === "aguardando" ? "waiting" :
+    "done"
+  }">
+    ${
+      r.status === "aberta" ? "Aberta" :
+      r.status === "andamento" ? "Em andamento" :
+      r.status === "aguardando" ? "Aguardando" :
+      "Concluída"
+    }
+  </span>
+`;
+
+    html += `
+      <tr>
+        <td data-label="ID">${escapeHTML(r.id)}</td>
+        <td data-label="Abertura">${dataAbertura}</td>
+        <td data-label="Garagem">${escapeHTML(r.garagem || '-')}</td>
+        <td data-label="Frota">${escapeHTML(r.frota || '-')}</td>
+        <td data-label="Material">${escapeHTML(r.material || '-')}</td>
+        <td data-label="Qtd">${r.quantidade || 0}</td>
+        <td data-label="Solicitante">${escapeHTML(r.solicitante || '-')}</td>
+        <td data-label="Código">${escapeHTML(r.codigo || '-')}</td>
+
+        <td data-label="Status">${statusPill}</td>
+
+        <td data-label="Ação">
+          <select class="status-select"
+            onchange="alterarStatusRequisicaoAPI('${r.id}', this.value)">
+            <option value="aberta" ${r.status === "aberta" ? "selected" : ""}>Aberta</option>
+            <option value="andamento" ${r.status === "andamento" ? "selected" : ""}>Em andamento</option>
+            <option value="aguardando" ${r.status === "aguardando" ? "selected" : ""}>Aguardando</option>
+            <option value="concluida" ${r.status === "concluida" ? "selected" : ""}>Concluída</option>
+          </select>
+        </td>
+      </tr>
+    `;
+  }
+
+  html += "</tbody>";
+
+  wrap.innerHTML = html;
+
+  // RODAPÉ: ATUALIZAÇÃO VISUAL
+  document.getElementById("total-req-count-completo").textContent =
+    estadoRequisicoesFiltro.totalRegistros;
+  document.getElementById("req-pagina-atual").textContent =
+    estadoRequisicoesFiltro.paginaAtual;
+  document.getElementById("req-total-paginas").textContent =
+    estadoRequisicoesFiltro.totalPaginas;
 }
 
 /* =========================

@@ -172,12 +172,13 @@
 <!-- LISTAGEM COMPLETA REQUISIÇÕES (ABERTA APENAS POR VER TODAS) -->
 <section id="tela-listagem-req-completo" class="hidden admin-only">
   <h2>📑 HISTÓRICO COMPLETO DE REQUISIÇÕES</h2>
-  <!-- FILTROS – IGUAL AO DE OS -->
-<div class="filtros-os">
+  <!-- ====================== -->
+<!-- FILTROS IGUAL A OS -->
+<!-- ====================== -->
+<div class="myos-toolbar">
 
-  <!-- STATUS -->
-  <div>
-    <label>Status:</label>
+  <div class="field">
+    <span class="muted">Status:</span>
     <select id="filtro-req-status">
       <option value="">Todos</option>
       <option value="aberta">Aberta</option>
@@ -187,15 +188,13 @@
     </select>
   </div>
 
-  <!-- BUSCA -->
-  <div>
-    <label>Buscar:</label>
-    <input id="busca-req-completo" type="text" placeholder="ID, garagem, frota, material, solicitante...">
+  <div class="field">
+    <span class="muted">Buscar:</span>
+    <input id="busca-req-completo" type="search" placeholder="ID, frota, garagem, material, solicitante, código...">
   </div>
 
-  <!-- GARAGEM -->
-  <div>
-    <label>Garagem:</label>
+  <div class="field">
+    <span class="muted">Garagem:</span>
     <select id="filtro-req-garagem">
       <option value="">Todas</option>
       <option value="SANTA LUZIA">SANTA LUZIA</option>
@@ -203,9 +202,8 @@
     </select>
   </div>
 
-  <!-- POR PÁGINA -->
-  <div>
-    <label>Por página:</label>
+  <div class="field">
+    <span class="muted">Por página:</span>
     <select id="pag-size-req-completo">
       <option value="10">10</option>
       <option value="25">25</option>
@@ -214,9 +212,7 @@
     </select>
   </div>
 
-  <!-- SOMENTE MINHAS -->
-  <div>
-    <label></label>
+  <div class="field">
     <label class="checkbox-label">
       <input type="checkbox" id="checkbox-minhas-req">
       Somente minhas
@@ -225,12 +221,28 @@
 
 </div>
 
-<!-- TOTAL -->
-<div style="margin: 10px 0; color: #fff; opacity: 0.7;">
-  Total: <span id="total-req-count-completo">0</span> requisições
+
+<!-- ====================== -->
+<!-- TABELA IGUAL A OS -->
+<!-- ====================== -->
+<div class="myos-table-wrap">
+  <table class="myos-table" id="tabela-completa-req"></table>
 </div>
-  <div id="tabela-completa-req"></div>
-</section>
+
+<!-- ====================== -->
+<!-- RODAPÉ / PAGINAÇÃO -->
+<!-- ====================== -->
+<div class="myos-footer">
+  <div class="total">
+    Total: <span id="total-req-count-completo">0</span> requisições
+  </div>
+
+  <div class="pager">
+    <button id="req-prev-btn" onclick="navegarPaginaRequisicao(-1)">Anterior</button>
+    <span>Página <span id="req-pagina-atual">1</span> de <span id="req-total-paginas">1</span></span>
+    <button id="req-next-btn" onclick="navegarPaginaRequisicao(1)">Próxima</button>
+  </div>
+</div>
 
 </main>
 </div>
