@@ -172,6 +172,63 @@
 <!-- LISTAGEM COMPLETA REQUISIÇÕES (ABERTA APENAS POR VER TODAS) -->
 <section id="tela-listagem-req-completo" class="hidden admin-only">
   <h2>📑 HISTÓRICO COMPLETO DE REQUISIÇÕES</h2>
+  <!-- FILTROS – IGUAL AO DE OS -->
+<div class="filtros-os">
+
+  <!-- STATUS -->
+  <div>
+    <label>Status:</label>
+    <select id="filtro-req-status">
+      <option value="">Todos</option>
+      <option value="aberta">Aberta</option>
+      <option value="andamento">Em andamento</option>
+      <option value="aguardando">Aguardando</option>
+      <option value="concluida">Concluída</option>
+    </select>
+  </div>
+
+  <!-- BUSCA -->
+  <div>
+    <label>Buscar:</label>
+    <input id="busca-req-completo" type="text" placeholder="ID, garagem, frota, material, solicitante...">
+  </div>
+
+  <!-- GARAGEM -->
+  <div>
+    <label>Garagem:</label>
+    <select id="filtro-req-garagem">
+      <option value="">Todas</option>
+      <option value="SANTA LUZIA">SANTA LUZIA</option>
+      <option value="MATOZINHOS">MATOZINHOS</option>
+    </select>
+  </div>
+
+  <!-- POR PÁGINA -->
+  <div>
+    <label>Por página:</label>
+    <select id="pag-size-req-completo">
+      <option value="10">10</option>
+      <option value="25">25</option>
+      <option value="50">50</option>
+      <option value="100">100</option>
+    </select>
+  </div>
+
+  <!-- SOMENTE MINHAS -->
+  <div>
+    <label></label>
+    <label class="checkbox-label">
+      <input type="checkbox" id="checkbox-minhas-req">
+      Somente minhas
+    </label>
+  </div>
+
+</div>
+
+<!-- TOTAL -->
+<div style="margin: 10px 0; color: #fff; opacity: 0.7;">
+  Total: <span id="total-req-count-completo">0</span> requisições
+</div>
   <div id="tabela-completa-req"></div>
 </section>
 
