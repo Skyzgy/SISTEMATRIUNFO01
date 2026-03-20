@@ -650,30 +650,28 @@ app.post("/api/req", authRequired, roleRequired("admin", "mechanic"), async (req
   }
 });
 
-// =====================================================
-// Listar requisições — ADMIN e MECÂNICO
-// =====================================================
+// LISTAR REQUISIÇÕES — ADMIN & MECANICO
 app.get("/api/req", authRequired, roleRequired("admin", "mechanic"), async (req, res) => {
   try {
-    const { 
+    const {
       status,
       frota,
       garagem,
-      solicitante,
       material,
+      solicitante,
       codigo,
       busca,
+      mine,
       limit = 50,
       page = 1,
-      mine
     } = req.query;
 
-    const take = Math.max(1, Math.min(500, Number(limit)));
+    const take = Math.max(1, Math.min(200, Number(limit)));
     const skip = (Math.max(1, Number(page)) - 1) * take;
 
     const where = {};
 
-    // 🔍 Filtros individuais
+    // FILTROS INDIVIDUAIS
     if (status) where.status = String(status);
     if (frota) where.frota = String(frota);
     if (material) where.material = { contains: material, mode: "insensitive" };
@@ -681,19 +679,22 @@ app.get("/api/req", authRequired, roleRequired("admin", "mechanic"), async (req,
     if (garagem && garagem !== "Todos") where.garagem = String(garagem);
     if (solicitante) where.solicitante = String(solicitante);
 
-    // 👤 Somente minhas (para mecânico)
-    if (mine === "1") where.createdBy = req.user.id;
+    // SOMENTE MINHAS
+    if (mine === "1") {
+      where.createdBy = req.user.id;
+    }
 
-    // 🔎 Busca geral
+    // BUSCA GERAL (igual ao Histórico de OS)
     if (busca && busca.trim() !== "") {
-      const termo = String(busca).toLowerCase();
+      const termo = String(busca).toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
       where.OR = [
         { id: { contains: termo, mode: "insensitive" } },
         { frota: { contains: termo, mode: "insensitive" } },
         { garagem: { contains: termo, mode: "insensitive" } },
         { material: { contains: termo, mode: "insensitive" } },
         { solicitante: { contains: termo, mode: "insensitive" } },
-        { codigo: { contains: termo, mode: "insensitive" } }
+        { codigo: { contains: termo, mode: "insensitive" } },
+        { status: { contains: termo, mode: "insensitive" } },
       ];
     }
 
@@ -703,15 +704,15 @@ app.get("/api/req", authRequired, roleRequired("admin", "mechanic"), async (req,
         where,
         orderBy: { createdAt: "desc" },
         skip,
-        take
-      })
+        take,
+      }),
     ]);
 
     res.json({
       total,
       page: Number(page),
       pageSize: take,
-      items
+      items,
     });
 
   } catch (e) {
