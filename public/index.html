@@ -169,58 +169,79 @@
   <div id="tabela-listagem-req">Carregando...</div>
 </section>
 
-<!-- LISTAGEM COMPLETA REQUISIÇÕES (ABERTA APENAS POR VER TODAS) -->
-<section id="tela-listagem-req-completo" class="hidden admin-only">
-  <h2>📑 HISTÓRICO COMPLETO DE REQUISIÇÕES</h2>
-  <!-- ====================== -->
-<!-- FILTROS IGUAL A OS -->
-<!-- ====================== -->
-<div class="myos-toolbar">
+<!-- HISTÓRICO COMPLETO DE REQUISIÇÕES -->
+<section id="tela-listagem-req" class="hidden admin-only">
 
-  <div class="field">
-    <span class="muted">Status:</span>
-    <select id="filtro-req-status">
-      <option value="">Todos</option>
-      <option value="aberta">Aberta</option>
-      <option value="andamento">Em andamento</option>
-      <option value="aguardando">Aguardando</option>
-      <option value="concluida">Concluída</option>
-    </select>
+  <h2 class="section-title">📑 HISTÓRICO COMPLETO DE REQUISIÇÕES</h2>
+
+  <!-- FILTROS (único bloco válido) -->
+  <div class="myos-toolbar">
+
+    <div class="field">
+      <span class="muted">Status:</span>
+      <select id="filtro-req-status">
+        <option value="">Todos</option>
+        <option value="aberta">Aberta</option>
+        <option value="andamento">Em andamento</option>
+        <option value="aguardando">Aguardando</option>
+        <option value="concluida">Concluída</option>
+      </select>
+    </div>
+
+    <div class="field">
+      <span class="muted">Buscar:</span>
+      <input id="busca-req-completo" type="search"
+             placeholder="ID, frota, garagem, material, solicitante, código...">
+    </div>
+
+    <div class="field">
+      <span class="muted">Garagem:</span>
+      <select id="filtro-req-garagem">
+        <option value="">Todas</option>
+        <option value="SANTA LUZIA">SANTA LUZIA</option>
+        <option value="MATOZINHOS">MATOZINHOS</option>
+      </select>
+    </div>
+
+    <div class="field">
+      <span class="muted">Por página:</span>
+      <select id="pag-size-req-completo">
+        <option value="10">10</option>
+        <option value="25">25</option>
+        <option value="50">50</option>
+        <option value="100">100</option>
+      </select>
+    </div>
+
+    <div class="field">
+      <label class="checkbox-label">
+        <input type="checkbox" id="checkbox-minhas-req">
+        Somente minhas
+      </label>
+    </div>
+
   </div>
 
-  <div class="field">
-    <span class="muted">Buscar:</span>
-    <input id="busca-req-completo" type="search" placeholder="ID, frota, garagem, material, solicitante, código...">
+  <!-- TABELA (único bloco válido) -->
+  <div class="myos-table-wrap">
+    <table class="myos-table" id="tabela-completa-req"></table>
   </div>
 
-  <div class="field">
-    <span class="muted">Garagem:</span>
-    <select id="filtro-req-garagem">
-      <option value="">Todas</option>
-      <option value="SANTA LUZIA">SANTA LUZIA</option>
-      <option value="MATOZINHOS">MATOZINHOS</option>
-    </select>
+  <!-- RODAPÉ / PAGINAÇÃO (único bloco válido) -->
+  <div class="myos-footer">
+    <div class="total">
+      Total: <span id="total-req-count-completo">0</span> requisições
+    </div>
+
+    <div class="pager">
+      <button onclick="navegarPaginaRequisicao(-1)">Anterior</button>
+      <span>Página <span id="req-pagina-atual">1</span>
+            de <span id="req-total-paginas">1</span></span>
+      <button onclick="navegarPaginaRequisicao(1)">Próxima</button>
+    </div>
   </div>
 
-  <div class="field">
-    <span class="muted">Por página:</span>
-    <select id="pag-size-req-completo">
-      <option value="10">10</option>
-      <option value="25">25</option>
-      <option value="50">50</option>
-      <option value="100">100</option>
-    </select>
-  </div>
-
-  <div class="field">
-    <label class="checkbox-label">
-      <input type="checkbox" id="checkbox-minhas-req">
-      Somente minhas
-    </label>
-  </div>
-
-</div>
-
+</section>
 
 <!-- ====================== -->
 <!-- TABELA IGUAL A OS -->
