@@ -169,12 +169,14 @@
   <div id="tabela-listagem-req">Carregando...</div>
 </section>
 
-<!-- HISTÓRICO COMPLETO DE REQUISIÇÕES -->
+<!-- =============================== -->
+<!-- 📑 HISTÓRICO COMPLETO DE REQUISIÇÕES -->
+<!-- =============================== -->
 <section id="tela-listagem-req" class="hidden admin-only">
 
   <h2 class="section-title">📑 HISTÓRICO COMPLETO DE REQUISIÇÕES</h2>
 
-  <!-- FILTROS (único bloco válido) -->
+  <!-- FILTROS (APENAS ESTE BLOCO) -->
   <div class="myos-toolbar">
 
     <div class="field">
@@ -190,7 +192,8 @@
 
     <div class="field">
       <span class="muted">Buscar:</span>
-      <input id="busca-req-completo" type="search"
+      <input id="busca-req-completo" 
+             type="search" 
              placeholder="ID, frota, garagem, material, solicitante, código...">
     </div>
 
@@ -222,12 +225,12 @@
 
   </div>
 
-  <!-- TABELA (único bloco válido) -->
+  <!-- TABELA (APENAS ESTE BLOCO) -->
   <div class="myos-table-wrap">
     <table class="myos-table" id="tabela-completa-req"></table>
   </div>
 
-  <!-- RODAPÉ / PAGINAÇÃO (único bloco válido) -->
+  <!-- PAGINAÇÃO (APENAS ESTE BLOCO) -->
   <div class="myos-footer">
     <div class="total">
       Total: <span id="total-req-count-completo">0</span> requisições
@@ -235,13 +238,16 @@
 
     <div class="pager">
       <button onclick="navegarPaginaRequisicao(-1)">Anterior</button>
-      <span>Página <span id="req-pagina-atual">1</span>
-            de <span id="req-total-paginas">1</span></span>
+      <span>
+        Página <span id="req-pagina-atual">1</span>
+        de <span id="req-total-paginas">1</span>
+      </span>
       <button onclick="navegarPaginaRequisicao(1)">Próxima</button>
     </div>
   </div>
 
 </section>
+``
 
 <!-- ====================== -->
 <!-- TABELA IGUAL A OS -->
