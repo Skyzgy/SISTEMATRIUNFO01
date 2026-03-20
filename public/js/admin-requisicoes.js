@@ -1,7 +1,7 @@
-// public/js/admin-requisicoes.js
-// Histórico completo de REQUISIÇÕES (ADMIN) via API
-
+// DEBUG VERSION
 (function(){
+  console.log('[admin-requisicoes] Script carregado');
+
   const state = {
     me: null,
     role: null,
@@ -40,18 +40,22 @@
   }
 
   async function fetchMe(){
+    console.log('[fetchMe] Iniciando...');
     if (state.me) return state.me;
     try {
       const me = await api('/api/auth/me');
+      console.log('[fetchMe] Resposta:', me);
       state.me = me?.user || null;
       state.role = state.me?.role || null;
+      console.log('[fetchMe] Role definido como:', state.role);
     } catch(e) {
-      console.error('Erro ao buscar usuário:', e);
+      console.error('[fetchMe] Erro:', e);
     }
     return state.me;
   }
 
   async function fetchReq(){
+    console.log('[fetchReq] Iniciando...');
     try {
       const params = new URLSearchParams();
       if (state.status) params.set('status', state.status);
@@ -59,7 +63,12 @@
       params.set('page', String(state.page || 1));
       if (state.role === 'admin' && state.mine) params.set('mine', '1');
 
-      const res = await api(`/api/req?${params.toString()}`);
+      const url = `/api/req?${params.toString()}`;
+      console.log('[fetchReq] URL:', url);
+      
+      const res = await api(url);
+      console.log('[fetchReq] Resposta:', res);
+      
       state.total = Number(res?.total || 0);
       let items = res?.items || [];
 
@@ -73,9 +82,10 @@
       }
 
       state.items = items;
+      console.log('[fetchReq] Items carregados:', items.length);
       return items;
     } catch(e) {
-      console.error('Erro ao buscar requisições:', e);
+      console.error('[fetchReq] Erro:', e);
       return [];
     }
   }
@@ -93,6 +103,7 @@
   }
 
   function buildToolbar(container){
+    console.log('[buildToolbar] Criando toolbar');
     const wrap = document.createElement('div');
     wrap.className = 'myos-toolbar';
     wrap.innerHTML = `
@@ -173,6 +184,7 @@
   }
 
   function buildTable(container){
+    console.log('[buildTable] Criando tabela');
     const wrap = document.createElement('div');
     wrap.className = 'myos-table-wrap';
 
@@ -202,6 +214,7 @@
   }
 
   function buildFooter(container){
+    console.log('[buildFooter] Criando rodapé');
     const foot = document.createElement('div');
     foot.className = 'myos-footer';
     foot.innerHTML = `
@@ -226,6 +239,7 @@
   }
 
   function renderRows(container){
+    console.log('[renderRows] Renderizando linhas:', state.items.length);
     const tbody = container.querySelector('#areq-tbody');
     const totalEl = container.querySelector('#areq-total');
     const infoEl  = container.querySelector('#areq-info');
@@ -296,9 +310,13 @@
   }
 
   async function loadAdminReq() {
+    console.log('[loadAdminReq] INICIANDO');
+    
     const box = document.getElementById('tabela-completa-req');
+    console.log('[loadAdminReq] Container encontrado?', !!box);
+    
     if (!box) {
-      console.error('Container #tabela-completa-req não encontrado');
+      console.error('[loadAdminReq] Container #tabela-completa-req NÃO ENCONTRADO!');
       return;
     }
 
@@ -306,6 +324,8 @@
 
     try {
       await fetchMe();
+      console.log('[loadAdminReq] Role:', state.role);
+      
       if (state.role !== 'admin') {
         box.innerHTML = `<div class="empty-state">Apenas administradores podem acessar.</div>`;
         return;
@@ -318,8 +338,10 @@
 
       await fetchReq();
       renderRows(box);
+      
+      console.log('[loadAdminReq] CONCLUÍDO COM SUCESSO');
     } catch (err) {
-      console.error('[Admin Requisições] erro:', err);
+      console.error('[loadAdminReq] ERRO:', err);
       box.innerHTML = `<div class="empty-state">Erro: ${escapeHTML(err.message)}</div>`;
     }
   }
@@ -329,13 +351,16 @@
   document.addEventListener('click', (ev) => {
     const btn = ev.target.closest('[data-nav-target]');
     if (btn && btn.getAttribute('data-nav-target') === 'tela-listagem-req') {
+      console.log('[EVENT] Clicou em "Ver todas"');
       setTimeout(() => loadAdminReq().catch(console.error), 0);
     }
   });
 
   document.addEventListener('DOMContentLoaded', () => {
+    console.log('[DOMContentLoaded] Verificando se seção está visível');
     const sec = document.getElementById('tela-listagem-req');
     if (sec && !sec.classList.contains('hidden')) {
+      console.log('[DOMContentLoaded] Seção visível, carregando');
       loadAdminReq().catch(console.error);
     }
   });
