@@ -737,6 +737,26 @@ function renderizarTabelaOSCompleta() {
   `;
 }
 
+function renderizarTabelaREQCompletaComFiltros() {
+  const wrap = document.getElementById("tabela-completa-req");
+  if (!wrap) return;
+
+  let listaFinal = estadoRequisicoesFiltro.dados;
+
+  // BUSCA (igual ao de OS – busca inteligente)
+if (estadoRequisicoesFiltro.busca.trim() !== "") {
+  const termo = normalizarBuscaReq(estadoRequisicoesFiltro.busca);
+  
+  listaFinal = listaFinal.filter(r => {
+    const texto =
+      `${r.id} ${r.material} ${r.quantidade} ${r.frota} ${r.garagem} ${r.solicitante} ${r.codigo} ${r.status}`
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '');
+    
+    return texto.includes(termo);
+  });
+}
   // VAZIO
   if (!listaFinal.length) {
     wrap.innerHTML = `<div class="empty-state">Sem requisições encontradas</div>`;
@@ -822,6 +842,7 @@ function renderizarTabelaOSCompleta() {
     estadoRequisicoesFiltro.paginaAtual;
   document.getElementById("req-total-paginas").textContent =
     estadoRequisicoesFiltro.totalPaginas;
+}
 
 /* =========================
    Ações (LEGADO – localStorage)
@@ -848,6 +869,31 @@ function removerOS(id, indexFallback = -1) {
   salvarLista(STORAGE_KEYS.OS, ordensServico);
 
   renderizarTabelaOSCompleta();
+  atualizarDashboard();
+}
+
+function alterarStatusREQ(id, novo, indexFallback = -1) {
+  let idx = requisicoes.findIndex(x => x.id === id);
+  if (idx < 0) idx = indexFallback;
+  if (idx < 0 || !requisicoes[idx]) return;
+
+  requisicoes[idx].status = normalizarStatus(novo);
+  salvarLista(STORAGE_KEYS.REQ, requisicoes);
+
+  renderizarTabelaREQCompleta();
+  atualizarDashboard();
+}
+function concluirREQ(id, indexFallback = -1) { alterarStatusREQ(id, "CONCLUÍDA", indexFallback); }
+function removerREQ(id, indexFallback = -1) {
+  let idx = requisicoes.findIndex(x => x.id === id);
+  if (idx < 0) idx = indexFallback;
+  if (idx < 0 || !requisicoes[idx]) return;
+  if (!confirm(`Remover ${requisicoes[idx].id}? Esta ação não pode ser desfeita.`)) return;
+
+  requisicoes.splice(idx, 1);
+  salvarLista(STORAGE_KEYS.REQ, requisicoes);
+
+  renderizarTabelaREQCompleta();
   atualizarDashboard();
 }
 
@@ -921,6 +967,63 @@ function renderizarTabelaOSFiltrada() {
           <tr>
             <th>ID</th><th>Data</th><th>Garagem</th><th>Motorista</th><th>Frota</th>
             <th>KM</th><th>Tipo</th><th>Descrição</th><th>Status</th><th>Ações</th>
+          </tr>
+        </thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>
+  `;
+}
+
+function renderizarTabelaREQFiltrada() {
+  const termo = norm(BUSCA_STATE.req);
+  let lista = requisicoes;
+
+  if (termo) {
+    lista = requisicoes.filter(req => {
+      const campos = [
+        req.id, req.dataBR, req.material, req.quantidade, req.garagem,
+        req.frota, req.solicitante, req.codigo, req.descricao, req.status
+      ];
+      return campos.some(v => norm(v).includes(termo));
+    });
+  }
+
+  const wrap = document.getElementById("tabela-completa-req");
+  if (!wrap) return;
+  if (!lista.length) { wrap.innerHTML = `<div class="empty-state">Sem registros</div>`; return; }
+
+  const rows = lista.map((req, idx) => `
+    <tr>
+      <td>${escapeHTML(req.id)}</td>
+      <td>${escapeHTML(req.dataBR || "")}</td>
+      <td>${escapeHTML(req.material || "")}</td>
+      <td>${escapeHTML(String(req.quantidade ?? req.unidade ?? "-"))}</td>
+      <td>${escapeHTML(req.garagem || "")}</td>
+      <td>${escapeHTML(req.frota || "")}</td>
+      <td>${escapeHTML(req.solicitante || "")}</td>
+      <td>${escapeHTML(req.codigo || "")}</td>
+      <td>${escapeHTML(req.descricao || "")}</td>
+      <td>
+        <select class="status-select" onchange="alterarStatusREQ('${req.id}', this.value, ${idx})">
+          ${STATUS.map(s => `<option value="${s}" ${normalizarStatus(req.status)===s?'selected':''}>${s}</option>`).join("")}
+        </select>
+      </td>
+      <td>
+        <button class="btn-acao" onclick="concluirREQ('${req.id}', ${idx})">Concluir</button>
+        <button class="btn-acao secondary" onclick="removerREQ('${req.id}', ${idx})">Remover</button>
+      </td>
+    </tr>
+  `).join("");
+
+  wrap.innerHTML = `
+    <div class="tabela-wrap">
+      <table class="tabela">
+        <thead>
+          <tr>
+            <th>ID</th><th>Data</th><th>Material</th><th>Quantidade</th>
+            <th>Garagem</th><th>Frota</th><th>Solicitante</th>
+            <th>Código</th><th>Descrição</th><th>Status</th><th>Ações</th>
           </tr>
         </thead>
         <tbody>${rows}</tbody>
