@@ -7,7 +7,6 @@
   <title>Triunfo System - Gestão de Frota</title>
 
   <link rel="stylesheet" href="/style.css" />
-
   <link rel="stylesheet" href="/css/myos.css" />
 
   <style>
@@ -17,7 +16,6 @@
 <body>
   <div class="app-container">
 
-<!-- TOPBAR MOBILE -->
 <header class="app-topbar">
   <button id="btnMobileMenu" class="btn-menu"
     aria-label="Abrir menu"
@@ -26,7 +24,6 @@
   <div class="topbar-title">Triunfo System</div>
 </header>
 
-<!-- SIDEBAR -->
 <nav id="sidebar" class="sidebar" aria-label="Menu principal">
   <div class="sidebar-logo">
     <img src="/logo.jpeg" alt="Triunfo" style="max-width: 100%; height: auto;" />
@@ -35,7 +32,7 @@
   <div class="menu-items" role="menu">
     <button class="admin-only" data-nav-target="dashboard" role="menuitem">📊 Dashboard</button>
     <button data-open-modal="os" role="menuitem">📝 Abrir OS</button>
-    <button data-nav-target="minhas-os" role="menuitem">📋 Minhas OS</button> 
+    <button data-nav-target="minhas-os" role="menuitem">📋 Minhas OS</button>
     <button class="admin-only" data-open-modal="req" role="menuitem">📦 Nova Requisição</button>
     <button class="admin-only" data-nav-target="minhas-req" role="menuitem">📋 Minhas Requisições</button>
     <button class="admin-only" data-open-modal="abast" role="menuitem">⛽ Abastecimento</button>
@@ -45,13 +42,10 @@
   <button id="btnLogout" class="btn-exit">Sair do Sistema</button>
 </nav>
 
-<!-- BACKDROP MOBILE -->
 <div id="sidebarBackdrop" class="sidebar-backdrop" hidden></div>
 
-<!-- MAIN CONTENT -->
 <main class="main-content" id="conteudo" tabindex="-1">
 
-<!-- DASHBOARD -->
 <section id="tela-dashboard" class="admin-only" aria-labelledby="titulo-dashboard">
   <h1 id="titulo-dashboard" class="section-title">OS — STATUS</h1>
 
@@ -125,7 +119,6 @@
   </div>
 
   <div class="resumo-container">
-
     <section class="card-largo">
       <div class="card-largo-header">
         <div class="title-wrap">📋 ÚLTIMAS OS</div>
@@ -137,50 +130,39 @@
     <section class="card-largo admin-only">
       <div class="card-largo-header">
         <div class="title-wrap">📦 ÚLTIMAS REQUISIÇÕES</div>
-        <button class="link-ver-todas link-ver-todas--plain" data-nav-target="listagem-req-completo">Ver todas</button>
+        <button class="link-ver-todas link-ver-todas--plain" data-nav-target="listagem-req">Ver todas</button>
       </div>
       <div id="lista-requisicoes">Sem registros</div>
     </section>
-
   </div>
 </section>
 
-<!-- LISTAGEM COMPLETA OS -->
 <section id="tela-listagem-os" class="hidden admin-only">
   <h2>📋 HISTÓRICO COMPLETO DE OS</h2>
   <div id="tabela-completa-os"></div>
 </section>
 
-<!-- LISTAGEM COMPLETA ABASTECIMENTOS -->
 <section id="tela-listagem-abast" class="hidden admin-only">
   <h2>⛽ HISTÓRICO COMPLETO DE ABASTECIMENTOS</h2>
   <div id="tabela-completa-abast"></div>
 </section>
 
-<!-- MINHAS OS -->
 <section id="tela-minhas-os" class="hidden">
   <h2>📋 Minhas OS</h2>
   <div id="tabela-minhas-os">Carregando...</div>
 </section>
 
-<!-- MINHAS REQUISIÇÕES -->
 <section id="tela-minhas-req" class="hidden">
   <h2>📄 Minhas Requisições</h2>
   <div id="tabela-listagem-req">Carregando...</div>
 </section>
 
-<!-- =============================== -->
-<!-- 📑 HISTÓRICO COMPLETO DE REQUISIÇÕES -->
-<!-- =============================== -->
 <section id="tela-listagem-req" class="hidden admin-only">
+  <h2>📑 HISTÓRICO COMPLETO DE REQUISIÇÕES</h2>
 
-  <h2 class="section-title">📑 HISTÓRICO COMPLETO DE REQUISIÇÕES</h2>
-
-  <!-- FILTROS (APENAS ESTE BLOCO) -->
   <div class="myos-toolbar">
-
     <div class="field">
-      <span class="muted">Status:</span>
+      <label class="muted" for="filtro-req-status">Status:</label>
       <select id="filtro-req-status">
         <option value="">Todos</option>
         <option value="aberta">Aberta</option>
@@ -191,14 +173,12 @@
     </div>
 
     <div class="field">
-      <span class="muted">Buscar:</span>
-      <input id="busca-req-completo" 
-             type="search" 
-             placeholder="ID, frota, garagem, material, solicitante, código...">
+      <label class="muted" for="busca-req-completo">Buscar:</label>
+      <input id="busca-req-completo" type="search" placeholder="ID, frota, garagem, material, solicitante, código...">
     </div>
 
     <div class="field">
-      <span class="muted">Garagem:</span>
+      <label class="muted" for="filtro-req-garagem">Garagem:</label>
       <select id="filtro-req-garagem">
         <option value="">Todas</option>
         <option value="SANTA LUZIA">SANTA LUZIA</option>
@@ -207,7 +187,7 @@
     </div>
 
     <div class="field">
-      <span class="muted">Por página:</span>
+      <label class="muted" for="pag-size-req-completo">Por página:</label>
       <select id="pag-size-req-completo">
         <option value="10">10</option>
         <option value="25">25</option>
@@ -222,61 +202,49 @@
         Somente minhas
       </label>
     </div>
-
   </div>
 
-  <!-- TABELA (APENAS ESTE BLOCO) -->
   <div class="myos-table-wrap">
-    <table class="myos-table" id="tabela-completa-req"></table>
+    <table class="myos-table" id="tabela-completa-req">
+      <thead>
+        <tr>
+          <th style="min-width:100px;">ID</th>
+          <th style="min-width:150px;">Abertura</th>
+          <th style="min-width:120px;">Garagem</th>
+          <th style="min-width:90px;">Frota</th>
+          <th style="min-width:120px;">Material</th>
+          <th style="min-width:80px;">Qtd</th>
+          <th style="min-width:120px;">Solicitante</th>
+          <th style="min-width:100px;">Código</th>
+          <th style="min-width:130px;">Status</th>
+          <th style="min-width:130px;">Ação</th>
+        </tr>
+      </thead>
+      <tbody id="tabela-completa-req-tbody">
+        <tr><td colspan="10">Carregando...</td></tr>
+      </tbody>
+    </table>
   </div>
 
-  <!-- PAGINAÇÃO (APENAS ESTE BLOCO) -->
   <div class="myos-footer">
     <div class="total">
       Total: <span id="total-req-count-completo">0</span> requisições
     </div>
 
     <div class="pager">
-      <button onclick="navegarPaginaRequisicao(-1)">Anterior</button>
+      <button id="req-btn-anterior">Anterior</button>
       <span>
         Página <span id="req-pagina-atual">1</span>
         de <span id="req-total-paginas">1</span>
       </span>
-      <button onclick="navegarPaginaRequisicao(1)">Próxima</button>
+      <button id="req-btn-proxima">Próxima</button>
     </div>
   </div>
-
 </section>
-``
-
-<!-- ====================== -->
-<!-- TABELA IGUAL A OS -->
-<!-- ====================== -->
-<div class="myos-table-wrap">
-  <table class="myos-table" id="tabela-completa-req"></table>
-</div>
-
-<!-- ====================== -->
-<!-- RODAPÉ / PAGINAÇÃO -->
-<!-- ====================== -->
-<div class="myos-footer">
-  <div class="total">
-    Total: <span id="total-req-count-completo">0</span> requisições
-  </div>
-
-  <div class="pager">
-    <button id="req-prev-btn" onclick="navegarPaginaRequisicao(-1)">Anterior</button>
-    <span>Página <span id="req-pagina-atual">1</span> de <span id="req-total-paginas">1</span></span>
-    <button id="req-next-btn" onclick="navegarPaginaRequisicao(1)">Próxima</button>
-  </div>
-</div>
 
 </main>
 </div>
 
-<!-- MODAIS -->
-
-<!-- MODAL OS -->
 <div class="modal-overlay" id="modalOS" data-modal role="dialog" aria-modal="true" aria-labelledby="titulo-modal-os">
   <div class="modal-container" role="document">
     <div class="modal-header">
@@ -330,7 +298,6 @@
   </div>
 </div>
 
-<!-- MODAL REQUISIÇÃO (ADMIN) -->
 <div class="modal-overlay admin-only" id="modalRequisicao" data-modal role="dialog" aria-modal="true" aria-labelledby="titulo-modal-req">
   <div class="modal-container modal--small" role="document">
     <div class="modal-header">
@@ -342,7 +309,6 @@
     </div>
 
     <div class="modal-body">
-
       <div class="form-group">
         <label for="inputMaterial">MATERIAL</label>
         <input type="text" id="inputMaterial" name="material" placeholder="Digite aqui...">
@@ -396,7 +362,6 @@
         <label for="textoDescricaoReq">DESCRIÇÃO</label>
         <textarea id="textoDescricaoReq" name="descricaoReq" placeholder="Digite aqui..." rows="3"></textarea>
       </div>
-
     </div>
 
     <div class="modal-footer">
@@ -406,7 +371,6 @@
   </div>
 </div>
 
-<!-- MODAL ABASTECIMENTO (ADMIN) -->
 <div class="modal-overlay admin-only" id="modalAbastecimento" data-modal role="dialog" aria-modal="true" aria-labelledby="titulo-modal-abast">
   <div class="modal-container" role="document">
     <div class="modal-header">
@@ -458,7 +422,6 @@
   </div>
 </div>
 
-<!-- SCRIPTS -->
 <script src="/script.js" defer></script>
 <script src="/js/minhas-os.js" defer></script>
 <script src="/js/admin-os.js" defer></script>
