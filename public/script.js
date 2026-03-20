@@ -267,7 +267,7 @@ function trapFocus(modalEl, e) {
    Navegação SPA
 ========================= */
 function alternarTelas(tela) {
-  const ids = ["dashboard", "listagem-os", "minhas-req", "listagem-abast", "minhas-os", "listagem-req-completo"];
+  const ids = ["dashboard", "listagem-os", "minhas-req", "listagem-abast", "minhas-os", "listagem-req"];
   ids.forEach(id => hideEl(document.getElementById(`tela-${id}`)));
 
   const destino = document.getElementById(`tela-${tela}`);
