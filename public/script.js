@@ -743,18 +743,20 @@ function renderizarTabelaREQCompletaComFiltros() {
 
   let listaFinal = estadoRequisicoesFiltro.dados;
 
-  // BUSCA
-  if (estadoRequisicoesFiltro.busca) {
-    const termo = normalizarBuscaReq(estadoRequisicoesFiltro.busca);
-    listaFinal = listaFinal.filter(r => {
-      const campos = [
-        r.id, r.material || '', r.frota || '', r.garagem || '',
-        r.codigo || '', r.solicitante || ''
-      ];
-      return campos.some(v => normalizarBuscaReq(String(v)).includes(termo));
-    });
-  }
-
+  // BUSCA (igual ao de OS – busca inteligente)
+if (estadoRequisicoesFiltro.busca.trim() !== "") {
+  const termo = normalizarBuscaReq(estadoRequisicoesFiltro.busca);
+  
+  listaFinal = listaFinal.filter(r => {
+    const texto =
+      `${r.id} ${r.material} ${r.quantidade} ${r.frota} ${r.garagem} ${r.solicitante} ${r.codigo} ${r.status}`
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '');
+    
+    return texto.includes(termo);
+  });
+}
   // VAZIO
   if (!listaFinal.length) {
     wrap.innerHTML = `<div class="empty-state">Sem requisições encontradas</div>`;
