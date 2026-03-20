@@ -1,36 +1,34 @@
-// DEBUG VERSION
-(function(){
-  console.log('[admin-requisicoes] Script carregado');
+// public/js/admin-requisicoes.js
+// Histórico completo de REQUISIÇÕES (ADMIN) via API
+// Reusa api() e alternarTelas() definidos em /script.js e o CSS de /css/myos.css
 
+(function(){
+  // ---------- Estado ----------
   const state = {
     me: null,
-    role: null,
-    status: '',
-    q: '',
-    mine: false,
+    role: null,     // 'admin' ou 'driver'
+    status: '',     // filtro de status
+    q: '',          // busca por texto (id, frota, garagem, material, solicitante, código)
+    mine: false,    // somente minhas (útil para admin)
     page: 1,
     limit: 25,
     total: 0,
     items: []
   };
 
+  // ---------- Utils ----------
   function fmtDateTimeBR(iso){
     try{
       const d = new Date(iso);
       return d.toLocaleString('pt-BR', { year:'numeric', month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit' });
     }catch{ return ''; }
   }
-
-  function escapeHTML(str){ 
-    return String(str).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#039;"); 
-  }
-
+  function escapeHTML(str){ return String(str).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#039;"); }
   function highlight(text, query){
     if (!query) return text;
     const q = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     return text.replace(new RegExp(`(${q})`, 'ig'), '<mark>$1</mark>');
   }
-
   function statusPill(status){
     const s = String(status||'').toLowerCase();
     if (s === 'andamento') return `<span class="pill working">em andamento</span>`;
@@ -40,70 +38,49 @@
   }
 
   async function fetchMe(){
-    console.log('[fetchMe] Iniciando...');
     if (state.me) return state.me;
-    try {
-      const me = await api('/api/auth/me');
-      console.log('[fetchMe] Resposta:', me);
-      state.me = me?.user || null;
-      state.role = state.me?.role || null;
-      console.log('[fetchMe] Role definido como:', state.role);
-    } catch(e) {
-      console.error('[fetchMe] Erro:', e);
-    }
+    const me = await api('/api/auth/me');
+    state.me = me?.user || null;
+    state.role = state.me?.role || null;
     return state.me;
   }
 
+  // ---------- API ----------
   async function fetchReq(){
-    console.log('[fetchReq] Iniciando...');
-    try {
-      const params = new URLSearchParams();
-      if (state.status) params.set('status', state.status);
-      params.set('limit', String(state.limit || 25));
-      params.set('page', String(state.page || 1));
-      if (state.role === 'admin' && state.mine) params.set('mine', '1');
+    const params = new URLSearchParams();
+    if (state.status) params.set('status', state.status);
+    params.set('limit', String(state.limit || 25));
+    params.set('page', String(state.page || 1));
+    // Para ADMIN: "somente minhas"
+    if (state.role === 'admin' && state.mine) params.set('mine', '1');
 
-      const url = `/api/req?${params.toString()}`;
-      console.log('[fetchReq] URL:', url);
-      
-      const res = await api(url);
-      console.log('[fetchReq] Resposta:', res);
-      
-      state.total = Number(res?.total || 0);
-      let items = res?.items || [];
+    const res = await api(`/api/req?${params.toString()}`);
+    state.total = Number(res?.total || 0);
+    let items = res?.items || [];
 
-      if (state.q) {
-        const qn = state.q.toLowerCase();
-        items = items.filter(r => {
-          const fields = [r.id, r.frota, r.garagem, r.material, r.solicitante, r.codigo]
-            .map(v => String(v || '').toLowerCase());
-          return fields.some(f => f.includes(qn));
-        });
-      }
-
-      state.items = items;
-      console.log('[fetchReq] Items carregados:', items.length);
-      return items;
-    } catch(e) {
-      console.error('[fetchReq] Erro:', e);
-      return [];
+    // Filtro de busca (front): id, frota, garagem, material, solicitante, código
+    if (state.q) {
+      const qn = state.q.toLowerCase();
+      items = items.filter(r => {
+        const fields = [r.id, r.frota, r.garagem, r.material, r.solicitante, r.codigo]
+          .map(v => String(v || '').toLowerCase());
+        return fields.some(f => f.includes(qn));
+      });
     }
+
+    state.items = items;
+    return items;
   }
 
   async function patchStatusReq(reqId, newStatus){
-    try {
-      await api(`/api/req/${encodeURIComponent(reqId)}/status`, {
-        method: 'PATCH',
-        body: JSON.stringify({ status: newStatus })
-      });
-    } catch(e) {
-      console.error('Erro ao alterar status:', e);
-      throw e;
-    }
+    await api(`/api/req/${encodeURIComponent(reqId)}/status`, {
+      method: 'PATCH',
+      body: JSON.stringify({ status: newStatus })
+    });
   }
 
+  // ---------- UI (aproveita CSS de myos.css) ----------
   function buildToolbar(container){
-    console.log('[buildToolbar] Criando toolbar');
     const wrap = document.createElement('div');
     wrap.className = 'myos-toolbar';
     wrap.innerHTML = `
@@ -139,6 +116,7 @@
     `;
     container.appendChild(wrap);
 
+    // Eventos
     const selStatus = wrap.querySelector('#areq-status');
     const inpQ      = wrap.querySelector('#areq-q');
     const selLimit  = wrap.querySelector('#areq-limit');
@@ -184,7 +162,6 @@
   }
 
   function buildTable(container){
-    console.log('[buildTable] Criando tabela');
     const wrap = document.createElement('div');
     wrap.className = 'myos-table-wrap';
 
@@ -214,7 +191,6 @@
   }
 
   function buildFooter(container){
-    console.log('[buildFooter] Criando rodapé');
     const foot = document.createElement('div');
     foot.className = 'myos-footer';
     foot.innerHTML = `
@@ -239,7 +215,6 @@
   }
 
   function renderRows(container){
-    console.log('[renderRows] Renderizando linhas:', state.items.length);
     const tbody = container.querySelector('#areq-tbody');
     const totalEl = container.querySelector('#areq-total');
     const infoEl  = container.querySelector('#areq-info');
@@ -285,6 +260,7 @@
         tbody.appendChild(tr);
       });
 
+      // Alteração de status
       tbody.querySelectorAll('.areq-status-change').forEach(sel => {
         sel.addEventListener('change', async () => {
           const newStatus = sel.value;
@@ -292,7 +268,7 @@
           sel.disabled = true;
           try {
             await patchStatusReq(reqId, newStatus);
-            await loadAdminReq();
+            await loadAdminReq(); // atualiza lista após o patch
           } catch (err) {
             alert('Erro ao alterar status: ' + err.message);
           } finally {
@@ -302,6 +278,7 @@
       });
     }
 
+    // Totais/paginação
     totalEl.textContent = `Total: ${state.total} requisições`;
     const maxPage = Math.max(1, Math.ceil(state.total / state.limit));
     infoEl.textContent = `Página ${state.page} de ${maxPage}`;
@@ -309,59 +286,54 @@
     container.querySelector('#areq-next').disabled = state.page >= maxPage;
   }
 
+  // ---------- Função principal ----------
   async function loadAdminReq() {
-    console.log('[loadAdminReq] INICIANDO');
-    
     const box = document.getElementById('tabela-completa-req');
-    console.log('[loadAdminReq] Container encontrado?', !!box);
-    
-    if (!box) {
-      console.error('[loadAdminReq] Container #tabela-completa-req NÃO ENCONTRADO!');
+    if (!box) return;
+
+    // Seção pode ser chamada várias vezes — sempre reconstrua para manter limpo
+    box.innerHTML = 'Carregando...';
+
+    // Garante role
+    await fetchMe();
+    if (state.role !== 'admin') {
+      box.innerHTML = `<div class="empty-state">Apenas administradores podem acessar o histórico completo de Requisições.</div>`;
       return;
     }
 
-    box.innerHTML = 'Carregando...';
+    // Monta UI
+    box.innerHTML = '';
+    buildToolbar(box);
+    buildTable(box);
+    buildFooter(box);
 
+    // Busca e render
     try {
-      await fetchMe();
-      console.log('[loadAdminReq] Role:', state.role);
-      
-      if (state.role !== 'admin') {
-        box.innerHTML = `<div class="empty-state">Apenas administradores podem acessar.</div>`;
-        return;
-      }
-
-      box.innerHTML = '';
-      buildToolbar(box);
-      buildTable(box);
-      buildFooter(box);
-
       await fetchReq();
       renderRows(box);
-      
-      console.log('[loadAdminReq] CONCLUÍDO COM SUCESSO');
     } catch (err) {
-      console.error('[loadAdminReq] ERRO:', err);
-      box.innerHTML = `<div class="empty-state">Erro: ${escapeHTML(err.message)}</div>`;
+      console.error('[Admin Requisições] erro:', err);
+      box.innerHTML = `<div class="empty-state">Erro ao carregar Requisições: ${escapeHTML(err.message)}</div>`;
     }
   }
 
+  // Exporta para uso externo (se quiser chamar manualmente)
   window.loadAdminReq = loadAdminReq;
 
+  // Quando navegar para "Histórico completo de REQUISIÇÕES", renderize
   document.addEventListener('click', (ev) => {
     const btn = ev.target.closest('[data-nav-target]');
-    if (btn && btn.getAttribute('data-nav-target') === 'tela-listagem-req') {
-      console.log('[EVENT] Clicou em "Ver todas"');
-      setTimeout(() => loadAdminReq().catch(console.error), 0);
+    if (!btn) return;
+    if (btn.getAttribute('data-nav-target') === 'listagem-req-completo') {
+      setTimeout(() => loadAdminReq().catch(()=>{}), 0);
     }
   });
 
+  // Se a seção já estiver visível por algum motivo, renderize
   document.addEventListener('DOMContentLoaded', () => {
-    console.log('[DOMContentLoaded] Verificando se seção está visível');
-    const sec = document.getElementById('tela-listagem-req');
+    const sec = document.getElementById('tela-listagem-req-completo');
     if (sec && !sec.classList.contains('hidden')) {
-      console.log('[DOMContentLoaded] Seção visível, carregando');
-      loadAdminReq().catch(console.error);
+      loadAdminReq().catch(()=>{});
     }
   });
 
