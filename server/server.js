@@ -655,15 +655,47 @@ app.post("/api/req", authRequired, roleRequired("admin", "mechanic"), async (req
 // =====================================================
 app.get("/api/req", authRequired, roleRequired("admin", "mechanic"), async (req, res) => {
   try {
-    const { status, frota, material, limit = 50, page = 1 } = req.query;
+    const { 
+      status,
+      frota,
+      garagem,
+      solicitante,
+      material,
+      codigo,
+      busca,
+      limit = 50,
+      page = 1,
+      mine
+    } = req.query;
 
-    const take = Math.max(1, Math.min(1000, Number(limit)));
+    const take = Math.max(1, Math.min(500, Number(limit)));
     const skip = (Math.max(1, Number(page)) - 1) * take;
 
     const where = {};
+
+    // 🔍 Filtros individuais
     if (status) where.status = String(status);
     if (frota) where.frota = String(frota);
     if (material) where.material = { contains: material, mode: "insensitive" };
+    if (codigo) where.codigo = { contains: codigo, mode: "insensitive" };
+    if (garagem && garagem !== "Todos") where.garagem = String(garagem);
+    if (solicitante) where.solicitante = String(solicitante);
+
+    // 👤 Somente minhas (para mecânico)
+    if (mine === "1") where.createdBy = req.user.id;
+
+    // 🔎 Busca geral
+    if (busca && busca.trim() !== "") {
+      const termo = String(busca).toLowerCase();
+      where.OR = [
+        { id: { contains: termo, mode: "insensitive" } },
+        { frota: { contains: termo, mode: "insensitive" } },
+        { garagem: { contains: termo, mode: "insensitive" } },
+        { material: { contains: termo, mode: "insensitive" } },
+        { solicitante: { contains: termo, mode: "insensitive" } },
+        { codigo: { contains: termo, mode: "insensitive" } }
+      ];
+    }
 
     const [total, items] = await Promise.all([
       prisma.req.count({ where }),
@@ -675,17 +707,11 @@ app.get("/api/req", authRequired, roleRequired("admin", "mechanic"), async (req,
       })
     ]);
 
-    // display formatado
-    const formatted = items.map(r => ({
-      ...r,
-      display: `${r.id} • ${r.material} • Frota ${r.frota} • ${r.status}`
-    }));
-
     res.json({
       total,
       page: Number(page),
       pageSize: take,
-      items: formatted
+      items
     });
 
   } catch (e) {
