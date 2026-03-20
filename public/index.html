@@ -130,7 +130,7 @@
     <section class="card-largo admin-only">
       <div class="card-largo-header">
         <div class="title-wrap">📦 ÚLTIMAS REQUISIÇÕES</div>
-        <button class="link-ver-todas link-ver-todas--plain" data-nav-target="listagem-req">Ver todas</button>
+        <button class="link-ver-todas link-ver-todas--plain" data-nav-target="tela-listagem-req">Ver todas</button>
       </div>
       <div id="lista-requisicoes">Sem registros</div>
     </section>
@@ -232,12 +232,12 @@
     </div>
 
     <div class="pager">
-      <button id="req-btn-anterior">Anterior</button>
+      <button onclick="navegarPaginaRequisicao(-1)">Anterior</button>
       <span>
         Página <span id="req-pagina-atual">1</span>
         de <span id="req-total-paginas">1</span>
       </span>
-      <button id="req-btn-proxima">Próxima</button>
+      <button onclick="navegarPaginaRequisicao(1)">Próxima</button>
     </div>
   </div>
 </section>
