@@ -324,14 +324,14 @@
   document.addEventListener('click', (ev) => {
     const btn = ev.target.closest('[data-nav-target]');
     if (!btn) return;
-    if (btn.getAttribute('data-nav-target') === 'listagem-req-completo') {
+    if (btn.getAttribute('data-nav-target') === 'tela-listagem-req') {
       setTimeout(() => loadAdminReq().catch(()=>{}), 0);
     }
   });
 
   // Se a seção já estiver visível por algum motivo, renderize
   document.addEventListener('DOMContentLoaded', () => {
-    const sec = document.getElementById('tela-listagem-req-completo');
+    const sec = document.getElementById('tela-listagem-req');
     if (sec && !sec.classList.contains('hidden')) {
       loadAdminReq().catch(()=>{});
     }
