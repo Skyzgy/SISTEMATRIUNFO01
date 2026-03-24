@@ -31,6 +31,7 @@ const bancoDeDados = {
   },
   veiculos: {
     "SANTA LUZIA": [
+      { modelo: "VOLARE W9 ON", placa: "HEH2H19", prefixo: "1151" },
       { modelo: "VOLARE W9 ON", placa: "PUD6B82", prefixo: "14102" },
       { modelo: "VOLARE W9 ON", placa: "PUD6B79", prefixo: "19505" },
       { modelo: "416CDISPRINTERM", placa: "RNG2A67", prefixo: "2110" },
