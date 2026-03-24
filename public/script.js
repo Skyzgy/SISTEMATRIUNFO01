@@ -18,7 +18,7 @@
 ========================= */
 const bancoDeDados = {
   garagens: ["SANTA LUZIA", "MATOZINHOS"],
-  tiposServico: ["MECÂNICA", "ELÉTRICA", "LANTERNAGEM", "BORRACHARIA", "REVISÃO"],
+  tiposServico: ["MECÂNICA", "ELÉTRICA", "LANTERNAGEM", "BORRACHARIA", "LAVAGEM", "REVISÃO"],
   motoristas: {
     "SANTA LUZIA": [
       "ADILSON DE LIMA","ALLAINE DECOTHE RODRIGUES","ANDERSON FERREIRA DA SILVA","ANDERSON MORGADO",
